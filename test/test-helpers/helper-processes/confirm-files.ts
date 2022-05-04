@@ -339,7 +339,7 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
   for (const entity of scenarioEntities) {
     // infer field types from assertions
     const assertedEntityFields = entity.values.map((item) => {
-      return { fieldName: item.fieldName, type: item.type }
+      return { fieldName: item.fieldName, type: item.fieldType }
     })
     // compare entity field types to types inferred from assertions
     const entityFileName = util.toKebabCase(entity.entityName)
@@ -392,16 +392,15 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
         ? visibleUpdate.authorized.map((item) => util.toPascalCase(item))
         : visibleUpdate.authorized
       // ...enter read model data
-      if (!scenarioReadModelsData.some((item) => item.readModelName === visibleUpdate.readModelName)) {
+      if (!scenarioReadModelsData.some((model) => model.readModelName === visibleUpdate.readModelName)) {
         scenarioReadModelsData.push({
           readModelName: util.toPascalCase(visibleUpdate.readModelName),
           values,
-          authorized: readModelAuthorization,
+          authorized: typeof readModelAuthorization === 'string' ? [readModelAuthorization] : readModelAuthorization,
         })
       }
     }
   }
-  console.log('⭐️ scenarioReadModelsData', JSON.stringify(scenarioReadModelsData, null, 2))
   // ...merge data for each read model across scenarios
   const scenarioReadModelsMerged = []
   for (const readModel of scenarioReadModelsData) {
@@ -418,15 +417,9 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
         readModel.values
       )
       //  ...merge authorization
-      scenarioReadModelsMerged[matchedIndex].authorized = scenarioReadModelsMerged[matchedIndex].authorized.concat(
-        readModel.authorized
-      )
-      // ! TODO fix duplicate authorization values
-      console.log(
-        '⭐️⭐️⭐️ scenarioReadModelsMerged[matchedIndex].authorized',
-        JSON.stringify(scenarioReadModelsMerged[matchedIndex].authorized, null, 2)
-      )
-
+      let mergedRoles = [...scenarioReadModelsMerged[matchedIndex].authorized, ...readModel.authorized]
+      mergedRoles = [...new Set(mergedRoles)]
+      scenarioReadModelsMerged[matchedIndex].authorized = mergedRoles
       // ...combine identical fieldNames and merge their field types
       const readModelFieldNames = scenarioReadModelsMerged[matchedIndex].values.map((readModel) => readModel.fieldName)
       const readModelFieldNamesUnique = [...new Set(readModelFieldNames)]
@@ -445,7 +438,6 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
       }
     }
   }
-  console.log('⭐️ scenarioReadModelsMerged', JSON.stringify(scenarioReadModelsMerged, null, 2))
   // ...reduce duplicate fieldName in values within each read model
   const scenarioReadModels = []
   for (const readModel of scenarioReadModelsMerged) {
@@ -460,247 +452,245 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
     })
   }
 
-  console.log('⭐️ scenarioReadModels', JSON.stringify(scenarioReadModels, null, 2))
+  // 🔭 Confirm READ MODEL FILES exist for all scenario[i].expectedVisibleUpdates[i].readModelName values
+  const missingReadModels = []
+  for (const readModel of scenarioReadModels) {
+    const readModelFileName = util.toKebabCase(readModel.readModelName)
+    if (!fs.existsSync(`${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`))
+      missingReadModels.push(readModelFileName)
+  }
+  if (missingReadModels.length > 0) {
+    invalid = true
+    const MissingReadModelsUnique = [...new Set(missingReadModels)]
+    for (const missingReadModel of MissingReadModelsUnique) {
+      errorMessage += `\n🔭 Read Model file missing: '${filePaths.readModelsDirectoryPath}/${missingReadModel}.ts'`
+    }
+  }
 
-  // // 🔭 Confirm READ MODEL FILES exist for all scenario[i].expectedVisibleUpdates[i].readModelName values
-  // const missingReadModels = []
-  // for (const readModel of scenarioReadModels) {
-  //   const readModelFileName = util.toKebabCase(readModel.readModelName)
-  //   if (!fs.existsSync(`${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`))
-  //     missingReadModels.push(readModelFileName)
-  // }
-  // if (missingReadModels.length > 0) {
-  //   invalid = true
-  //   const MissingReadModelsUnique = [...new Set(missingReadModels)]
-  //   for (const missingReadModel of MissingReadModelsUnique) {
-  //     errorMessage += `\n🔭 Read Model file missing: '${filePaths.readModelsDirectoryPath}/${missingReadModel}.ts'`
-  //   }
-  // }
+  // 🔭 Confirm each READ MODEL contains constructor FIELDS for all scenario[i].expectedVisibleUpdates[i].values[i].fieldName values
+  for (const readModel of scenarioReadModels) {
+    const readModelFileName = util.toKebabCase(readModel.readModelName)
+    const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
+    const readModelFileExists = fs.existsSync(readModelFilePath)
+    if (readModelFileExists) {
+      const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
+      const readModelConstructorLines = readModelFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
+      const readModelConstructorFieldNames = readModelConstructorLines[0].match(/(?<=public |readonly )(.*)(?=:)/g)
+      const readModelFields = readModel.values.map((value) => value)
+      const readModelFieldNames = readModel.values.map((value) => value.fieldName) as string[]
+      const missingFields = readModelFieldNames.filter(
+        (fieldName) => !readModelConstructorFieldNames?.includes(fieldName)
+      )
+      if (missingFields && missingFields.length > 0) {
+        invalid = true
+        missingFields.forEach((missingField) => {
+          errorMessage += `\n🔭 Read Model '${util.toPascalCase(
+            readModel.readModelName
+          )}' does not have field: ${util.toCamelCase(missingField)} (${
+            readModelFields.find((field) => field.fieldName === missingField).value
+          })`
+        })
+      }
+    }
+  }
 
-  // // 🔭 Confirm each READ MODEL contains constructor FIELDS for all scenario[i].expectedVisibleUpdates[i].values[i].fieldName values
-  // for (const readModel of scenarioReadModels) {
-  //   const readModelFileName = util.toKebabCase(readModel.readModelName)
-  //   const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
-  //   const readModelFileExists = fs.existsSync(readModelFilePath)
-  //   if (readModelFileExists) {
-  //     const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
-  //     const readModelConstructorLines = readModelFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
-  //     const readModelConstructorFieldNames = readModelConstructorLines[0].match(/(?<=public |readonly )(.*)(?=:)/g)
-  //     const readModelFields = readModel.values.map((value) => value)
-  //     const readModelFieldNames = readModel.values.map((value) => value.fieldName) as string[]
-  //     const missingFields = readModelFieldNames.filter(
-  //       (fieldName) => !readModelConstructorFieldNames?.includes(fieldName)
-  //     )
-  //     if (missingFields && missingFields.length > 0) {
-  //       invalid = true
-  //       missingFields.forEach((missingField) => {
-  //         errorMessage += `\n🔭 Read Model '${util.toPascalCase(
-  //           readModel.readModelName
-  //         )}' does not have field: ${util.toCamelCase(missingField)} (${
-  //           readModelFields.find((field) => field.fieldName === missingField).value
-  //         })`
-  //       })
-  //     }
-  //   }
-  // }
+  // 🔭 Confirm each READ MODEL constructor FIELD TYPE matches the type inferred from scenario[i].expectedVisibleUpdates[i].values[i].value
+  for (const readModel of scenarioReadModels) {
+    // infer field types from assertions
+    const assertedReadModelFields = readModel.values.map((item) => {
+      return { fieldName: item.fieldName, type: item.fieldType }
+    })
+    // compare read model constructor field types to types inferred from assertions
+    const readModelFileName = util.toKebabCase(readModel.readModelName)
+    const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
+    const readModelFileExists = fs.existsSync(readModelFilePath)
+    if (readModelFileExists) {
+      const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
+      const readModelConstructorLines = readModelFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
+      const readModelConstructorFields = [
+        ...readModelConstructorLines[0].matchAll(/(?<=public |readonly )([a-zA-Z]+)\?*:\s*(.+)/g),
+      ]
+      readModelConstructorFields.forEach((field) => {
+        const readModelFieldName = field[1].trim()
+        const readModelFieldType = field[2]
+          .replace(/,|\/\/.*/g, '')
+          .split(' | ')
+          .sort()
+        const readModelFieldTypesString = readModelFieldType.map((type) => type.trim()).join('|')
+        const mismatchedFieldTypes = assertedReadModelFields.find(
+          (item) => item.fieldName === readModelFieldName && item.type !== readModelFieldTypesString
+        )
+        if (mismatchedFieldTypes) {
+          invalid = true
+          errorMessage += `\n🔭 Read Model '${
+            readModel.readModelName
+          }' field '${readModelFieldName}' missing types (expecting ${
+            assertedReadModelFields.find((item) => item.fieldName === readModelFieldName).type
+          })`
+        }
+      })
+    }
+  }
 
-  // // 🔭 Confirm each READ MODEL constructor FIELD TYPE matches the type inferred from scenario[i].expectedVisibleUpdates[i].values[i].value
-  // for (const readModel of scenarioReadModels) {
-  //   // infer field types from assertions
-  //   const assertedReadModelFields = readModel.values.map((item) => {
-  //     return { fieldName: item.fieldName, type: item.value }
-  //   })
-  //   // compare read model constructor field types to types inferred from assertions
-  //   const readModelFileName = util.toKebabCase(readModel.readModelName)
-  //   const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
-  //   const readModelFileExists = fs.existsSync(readModelFilePath)
-  //   if (readModelFileExists) {
-  //     const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
-  //     const readModelConstructorLines = readModelFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
-  //     const readModelConstructorFields = [
-  //       ...readModelConstructorLines[0].matchAll(/(?<=public |readonly )([a-zA-Z]+)\?*:\s*(.+)/g),
-  //     ]
-  //     readModelConstructorFields.forEach((field) => {
-  //       const readModelFieldName = field[1].trim()
-  //       const readModelFieldType = field[2]
-  //         .replace(/,|\/\/.*/g, '')
-  //         .split(' | ')
-  //         .sort()
-  //       const readModelFieldTypesString = readModelFieldType.map((type) => type.trim()).join('|')
-  //       const mismatchedFieldTypes = assertedReadModelFields.find(
-  //         (item) => item.fieldName === readModelFieldName && item.type !== readModelFieldTypesString
-  //       )
-  //       if (mismatchedFieldTypes) {
-  //         invalid = true
-  //         errorMessage += `\n🪐 Read Model '${
-  //           readModel.readModelName
-  //         }' field '${readModelFieldName}' missing types (expecting ${
-  //           assertedReadModelFields.find((item) => item.fieldName === readModelFieldName).type
-  //         })`
-  //       }
-  //     })
-  //   }
-  // }
+  // 🔭 Confirm each READ MODEL PROJECTS at least one of scenario[i].expectedStateUpdates[i].entityName
+  const scenarioEntityNames = scenarioEntities.map((entity) => entity.entityName)
+  for (const readModel of scenarioReadModels) {
+    const readModelFileName = util.toKebabCase(readModel.readModelName)
+    const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
+    const readModelFileExists = fs.existsSync(readModelFilePath)
+    if (readModelFileExists) {
+      const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
+      const readModelProjectedEntityNames = readModelFile.match(/(?<=@Projects\()(.*)(?=,)/gm)
+      if (!readModelProjectedEntityNames) {
+        invalid = true
+        errorMessage += `\n🔭 Read Model '${util.toPascalCase(readModel.readModelName)}' does not project any entities`
+      }
+      if (readModelProjectedEntityNames) {
+        readModelProjectedEntityNames.forEach((projectedEntityName) => {
+          if (!scenarioEntityNames.includes(projectedEntityName)) {
+            invalid = true
+            errorMessage += `\n🔭 Read Model '${util.toPascalCase(
+              readModel.readModelName
+            )}' does not project at least one of these entities: ${scenarioEntities.join(', ')}`
+          }
+        })
+      }
+    }
+  }
 
-  // // 🔭 Confirm each READ MODEL PROJECTS at least one of scenario[i].expectedStateUpdates[i].entityName
-  // const scenarioEntityNames = scenarioEntities.map((entity) => entity.entityName)
-  // for (const readModel of scenarioReadModels) {
-  //   const readModelFileName = util.toKebabCase(readModel.readModelName)
-  //   const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
-  //   const readModelFileExists = fs.existsSync(readModelFilePath)
-  //   if (readModelFileExists) {
-  //     const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
-  //     const readModelProjectedEntityNames = readModelFile.match(/(?<=@Projects\()(.*)(?=,)/gm)
-  //     if (!readModelProjectedEntityNames) {
-  //       invalid = true
-  //       errorMessage += `\n🔭 Read Model '${util.toPascalCase(readModel.readModelName)}' does not project any entities`
-  //     }
-  //     if (readModelProjectedEntityNames) {
-  //       readModelProjectedEntityNames.forEach((projectedEntityName) => {
-  //         if (!scenarioEntityNames.includes(projectedEntityName)) {
-  //           invalid = true
-  //           errorMessage += `\n🔭 Read Model '${util.toPascalCase(
-  //             readModel.readModelName
-  //           )}' does not project at least one of these entities: ${scenarioEntities.join(', ')}`
-  //         }
-  //       })
-  //     }
-  //   }
-  // }
+  // 🔭 Confirm each read model has correct AUTHORIZATION
+  for (const readModel of scenarioReadModels) {
+    const readModelFileName = util.toKebabCase(readModel.readModelName)
+    const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
+    const readModelFileExists = fs.existsSync(readModelFilePath)
+    if (readModelFileExists) {
+      const assertedReadModelRoles = scenarioReadModels.find(
+        (item) => item.readModelName === readModel.readModelName
+      )?.authorized
+      const readModelFile = fs.readFileSync(`${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`, 'utf8')
+      let readModelAuthorizationString = readModelFile.match(/authorize: (.*)/g)[0].replace(/authorize: /g, '')
+      readModelAuthorizationString = readModelAuthorizationString.slice(0, -1) // remove trailing comma
+      const readModelHasAuthorization =
+        readModelAuthorizationString.startsWith("'all'") || readModelAuthorizationString.startsWith('[') ? true : false
+      let readModelHasCorrectAuthorization: boolean
+      if (readModelHasAuthorization) {
+        if (readModelAuthorizationString.startsWith("'all'"))
+          readModelHasCorrectAuthorization = assertedReadModelRoles.includes('all')
+        if (!readModelAuthorizationString.startsWith("'all'") && assertedReadModelRoles?.length > 0) {
+          let readModelFileRoles = readModelAuthorizationString.replace(/\[|\]|/g, '').split(',')
+          readModelFileRoles = readModelFileRoles.map((role: string) => role.trim())
+          readModelHasCorrectAuthorization = assertedReadModelRoles.every((role: string) =>
+            readModelFileRoles.includes(role)
+          )
+        }
+      }
+      const expectedReadRoles = !Array.isArray(assertedReadModelRoles) ? "'all'" : assertedReadModelRoles.join(', ')
+      // alert if read model missing any authorization definition
+      if (!readModelHasAuthorization) {
+        invalid = true
+        errorMessage += `\n🔭 Read Model '${util.toPascalCase(
+          readModel.readModelName
+        )}' does not have authorization defined (expecting ${expectedReadRoles})`
+      }
+      // alert if read model missing correct authorization definition
+      if (readModelHasAuthorization && !readModelHasCorrectAuthorization) {
+        invalid = true
+        errorMessage += `\n🔭 Read Model '${util.toPascalCase(
+          readModel.readModelName
+        )}' does not have correct authorization (expecting ${expectedReadRoles})`
+      }
+    }
+  }
 
-  // // 🔭 Confirm each read model has correct AUTHORIZATION
-  // for (const readModel of scenarioReadModels) {
-  //   const readModelFileName = util.toKebabCase(readModel.readModelName)
-  //   const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
-  //   const readModelFileExists = fs.existsSync(readModelFilePath)
-  //   if (readModelFileExists) {
-  //     const assertedReadModelRoles = scenarioReadModels.find(
-  //       (item) => item.readModelName === readModel.readModelName
-  //     )?.authorized
-  //     const readModelFile = fs.readFileSync(`${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`, 'utf8')
-  //     let readModelAuthorizationString = readModelFile.match(/authorize: (.*)/g)[0].replace(/authorize: /g, '')
-  //     readModelAuthorizationString = readModelAuthorizationString.slice(0, -1) // remove trailing comma
-  //     const readModelHasAuthorization =
-  //       readModelAuthorizationString.startsWith("'all'") || readModelAuthorizationString.startsWith('[') ? true : false
-  //     let readModelHasCorrectAuthorization: boolean
-  //     if (readModelHasAuthorization) {
-  //       if (!Array.isArray(assertedReadModelRoles))
-  //         readModelHasCorrectAuthorization = readModelAuthorizationString.startsWith("'all'")
-  //       if (Array.isArray(assertedReadModelRoles)) {
-  //         let readModelFileRoles = readModelAuthorizationString.replace(/\[|\]|/g, '').split(',')
-  //         readModelFileRoles = readModelFileRoles.map((role: string) => role.trim())
-  //         readModelHasCorrectAuthorization = assertedReadModelRoles.every((role: string) =>
-  //           readModelFileRoles.includes(role)
-  //         )
-  //       }
-  //     }
-  //     const expectedReadRoles = !Array.isArray(assertedReadModelRoles) ? "'all'" : assertedReadModelRoles.join(', ')
-  //     // alert if read model missing any authorization definition
-  //     if (!readModelHasAuthorization) {
-  //       invalid = true
-  //       errorMessage += `\n🔭 Read Model '${util.toPascalCase(
-  //         readModel.readModelName
-  //       )}' does not have authorization defined (expecting ${expectedReadRoles})`
-  //     }
-  //     // alert if read model missing correct authorization definition
-  //     if (readModelHasAuthorization && !readModelHasCorrectAuthorization) {
-  //       invalid = true
-  //       errorMessage += `\n🔭 Read Model '${util.toPascalCase(
-  //         readModel.readModelName
-  //       )}' does not have correct authorization (expecting ${expectedReadRoles})`
-  //     }
-  //   }
-  // }
+  // 🚀🚀🚀 EVENTS 🚀🚀🚀
+  // ======================================================================================
 
-  // // 🚀🚀🚀 EVENTS 🚀🚀🚀
-  // // ======================================================================================
+  // 🚀 Confirm if EVENT FILES registered by trigger exist
+  if (triggerRegisteredEvents) {
+    triggerRegisteredEvents.forEach((eventName) => {
+      const eventFileName = util.toKebabCase(eventName)
+      if (!fs.existsSync(`${filePaths.eventsDirectoryPath}/${eventFileName}.ts`)) {
+        invalid = true
+        errorMessage += `\n🚀 Event file missing: '${filePaths.eventsDirectoryPath}/${eventFileName}.ts'`
+      }
+    })
+  }
 
-  // // 🚀 Confirm if EVENT FILES registered by trigger exist
-  // if (triggerRegisteredEvents) {
-  //   triggerRegisteredEvents.forEach((eventName) => {
-  //     const eventFileName = util.toKebabCase(eventName)
-  //     if (!fs.existsSync(`${filePaths.eventsDirectoryPath}/${eventFileName}.ts`)) {
-  //       invalid = true
-  //       errorMessage += `\n🚀 Event file missing: '${filePaths.eventsDirectoryPath}/${eventFileName}.ts'`
-  //     }
-  //   })
-  // }
-
-  // // 🚀 Confirm each entity's REDUCED EVENTS include at least one of trigger's REGISTERED EVENTS
-  // for (const entity of scenarioEntities) {
-  //   const entityReducedEvents = []
-  //   const entityFileName = util.toKebabCase(entity.entityName)
-  //   const entityFilePath = `${filePaths.entitiesDirectoryPath}/${entityFileName}.ts`
-  //   const entityFileExists = fs.existsSync(entityFilePath)
-  //   if (entityFileExists) {
-  //     const entityFile = fs.readFileSync(entityFilePath, 'utf8')
-  //     const eventsReduced = entityFile.match(/@Reduces\((\w+)/gs)
-  //     if (!eventsReduced) {
-  //       invalid = true
-  //       errorMessage += `\n🪐 Entity '${util.toPascalCase(entity.entityName)}' does not reduce any events`
-  //     }
-  //     if (eventsReduced) {
-  //       eventsReduced.forEach((eventReduced) => {
-  //         const eventName = eventReduced.replace(/@Reduces\(|\)/g, '')
-  //         if (!entityReducedEvents.includes(eventName)) entityReducedEvents.push(eventName)
-  //       })
-  //       // check if entity reduces any of trigger's registered events
-  //       let matchingEventFound = false
-  //       if (entityReducedEvents.length > 0) {
-  //         entityReducedEvents.forEach((eventName) => {
-  //           if (triggerRegisteredEvents.includes(eventName)) matchingEventFound = true
-  //         })
-  //         // if there are no directly overlapping events, investigate if any event handlers register an entity reduced event
-  //         const eventHandlersMatchingEntity = []
-  //         // ...gather information from event handlers (fileName, eventName, registeredEvents)
-  //         const eventHandlers = []
-  //         const eventHandlerFiles = fs.readdirSync(filePaths.eventHandlersDirectoryPath)
-  //         eventHandlerFiles.forEach((eventHandlerFileName) => {
-  //           const thisEventHandlerInfo = { fileName: eventHandlerFileName, initiatingEvent: '', registeredEvents: [] }
-  //           const eventHandlerFilePath = `${filePaths.eventHandlersDirectoryPath}/${eventHandlerFileName}`
-  //           const eventHandlerFile = fs.readFileSync(eventHandlerFilePath, 'utf8')
-  //           const eventHandlerInitiatingEvent = eventHandlerFile
-  //             .match(/@EventHandler\((\w+)/g)[0]
-  //             .replace(/@EventHandler\(|/g, '')
-  //           thisEventHandlerInfo.initiatingEvent = eventHandlerInitiatingEvent
-  //           let eventHandlerRegisteredEvents = eventHandlerFile.match(/new (\w+)/gm)
-  //           eventHandlerRegisteredEvents = eventHandlerRegisteredEvents.filter(
-  //             (event) => !event.toLowerCase().includes('date') && !event.toLowerCase().includes('error')
-  //           )
-  //           if (eventHandlerRegisteredEvents) {
-  //             eventHandlerRegisteredEvents.forEach((registeredEventName) => {
-  //               if (!thisEventHandlerInfo.registeredEvents.includes(registeredEventName))
-  //                 thisEventHandlerInfo.registeredEvents.push(registeredEventName)
-  //             })
-  //           }
-  //         })
-  //         // ...check which (if any) event handlers register an event reduced by the entity
-  //         entityReducedEvents.forEach((eventName) => {
-  //           for (const eventHandler of eventHandlers) {
-  //             if (eventHandler.initiatingEvent === eventName) eventHandlersMatchingEntity.push(eventHandler)
-  //           }
-  //         })
-  //         // if no event handlers register an event reduced by the entity, exit this check with error
-  //         if (!matchingEventFound && eventHandlersMatchingEntity.length === 0) {
-  //           invalid = true
-  //           errorMessage += `\n🚀 Cannot find event path from trigger to entity '${entity.entityName}'`
-  //         }
-  //         // if there is a matching event handler, check if its initiating event matches an event registered by trigger file
-  //         if (!matchingEventFound && eventHandlersMatchingEntity.length > 0) {
-  //           eventHandlersMatchingEntity.forEach((eventHandler) => {
-  //             eventHandler.registeredEvents.forEach((registeredEventName: string) => {
-  //               if (triggerRegisteredEvents.includes(registeredEventName)) return
-  //             })
-  //           })
-  //           // if no match found between entity : 1 event handler : trigger, exit this check with error
-  //           // TODO: possibly refactor to check farther up event handler chain to trigger than 1 file
-  //           invalid = true
-  //           errorMessage += `\n🚀 Cannot find event path from trigger to entity '${entity.entityName}' (inspected event handlers 1 event deep)`
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
+  // 🚀 Confirm each entity's REDUCED EVENTS include at least one of trigger's REGISTERED EVENTS
+  for (const entity of scenarioEntities) {
+    const entityReducedEvents = []
+    const entityFileName = util.toKebabCase(entity.entityName)
+    const entityFilePath = `${filePaths.entitiesDirectoryPath}/${entityFileName}.ts`
+    const entityFileExists = fs.existsSync(entityFilePath)
+    if (entityFileExists) {
+      const entityFile = fs.readFileSync(entityFilePath, 'utf8')
+      const eventsReduced = entityFile.match(/@Reduces\((\w+)/gs)
+      if (!eventsReduced) {
+        invalid = true
+        errorMessage += `\n🪐 Entity '${util.toPascalCase(entity.entityName)}' does not reduce any events`
+      }
+      if (eventsReduced) {
+        eventsReduced.forEach((eventReduced) => {
+          const eventName = eventReduced.replace(/@Reduces\(|\)/g, '')
+          if (!entityReducedEvents.includes(eventName)) entityReducedEvents.push(eventName)
+        })
+        // check if entity reduces any of trigger's registered events
+        let matchingEventFound = false
+        if (entityReducedEvents.length > 0) {
+          entityReducedEvents.forEach((eventName) => {
+            if (triggerRegisteredEvents.includes(eventName)) matchingEventFound = true
+          })
+          // if there are no directly overlapping events, investigate if any event handlers register an entity reduced event
+          const eventHandlersMatchingEntity = []
+          // ...gather information from event handlers (fileName, eventName, registeredEvents)
+          const eventHandlers = []
+          const eventHandlerFiles = fs.readdirSync(filePaths.eventHandlersDirectoryPath)
+          eventHandlerFiles.forEach((eventHandlerFileName) => {
+            const thisEventHandlerInfo = { fileName: eventHandlerFileName, initiatingEvent: '', registeredEvents: [] }
+            const eventHandlerFilePath = `${filePaths.eventHandlersDirectoryPath}/${eventHandlerFileName}`
+            const eventHandlerFile = fs.readFileSync(eventHandlerFilePath, 'utf8')
+            const eventHandlerInitiatingEvent = eventHandlerFile
+              .match(/@EventHandler\((\w+)/g)[0]
+              .replace(/@EventHandler\(|/g, '')
+            thisEventHandlerInfo.initiatingEvent = eventHandlerInitiatingEvent
+            let eventHandlerRegisteredEvents = eventHandlerFile.match(/new (\w+)/gm)
+            eventHandlerRegisteredEvents = eventHandlerRegisteredEvents.filter(
+              (event) => !event.toLowerCase().includes('date') && !event.toLowerCase().includes('error')
+            )
+            if (eventHandlerRegisteredEvents) {
+              eventHandlerRegisteredEvents.forEach((registeredEventName) => {
+                if (!thisEventHandlerInfo.registeredEvents.includes(registeredEventName))
+                  thisEventHandlerInfo.registeredEvents.push(registeredEventName)
+              })
+            }
+          })
+          // ...check which (if any) event handlers register an event reduced by the entity
+          entityReducedEvents.forEach((eventName) => {
+            for (const eventHandler of eventHandlers) {
+              if (eventHandler.initiatingEvent === eventName) eventHandlersMatchingEntity.push(eventHandler)
+            }
+          })
+          // if no event handlers register an event reduced by the entity, exit this check with error
+          if (!matchingEventFound && eventHandlersMatchingEntity.length === 0) {
+            invalid = true
+            errorMessage += `\n🚀 Cannot find event path from trigger to entity '${entity.entityName}'`
+          }
+          // if there is a matching event handler, check if its initiating event matches an event registered by trigger file
+          if (!matchingEventFound && eventHandlersMatchingEntity.length > 0) {
+            eventHandlersMatchingEntity.forEach((eventHandler) => {
+              eventHandler.registeredEvents.forEach((registeredEventName: string) => {
+                if (triggerRegisteredEvents.includes(registeredEventName)) return
+              })
+            })
+            // if no match found between entity : 1 event handler : trigger, exit this check with error
+            // TODO: possibly refactor to check farther up event handler chain to trigger than 1 file
+            invalid = true
+            errorMessage += `\n🚀 Cannot find event path from trigger to entity '${entity.entityName}' (inspected event handlers 1 event deep)`
+          }
+        }
+      }
+    }
+  }
 
   if (invalid && errorMessage.length > 0) {
     // alphabetize error messages
