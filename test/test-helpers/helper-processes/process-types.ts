@@ -1,25 +1,25 @@
 import type { UUID } from '@boostercloud/framework-types'
 
-interface ActorCommand {
+export interface ActorCommand {
   type: 'ActorCommand'
   commandName: string
   authorized: string[] | string
 }
-interface ScheduledCommand {
+export interface ScheduledCommand {
   type: 'ScheduledCommand'
   commandName: string
   schedule: string
 }
-interface StateUpdate {
+export interface StateUpdate {
   entityName: string
   values: Record<string, string | number | boolean | Record<string, unknown> | unknown[] | UUID>
 }
-interface VisibleUpdate {
+export interface VisibleUpdate {
   readModelName: string
   values: Record<string, string | number | boolean | Record<string, unknown> | unknown[] | UUID>
   authorized: string[] | string
 }
-interface Scenario {
+export interface Scenario {
   name: string
   inputs: Record<string, string | number | boolean | Record<string, unknown> | unknown[] | UUID>
   expectedStateUpdates: StateUpdate[]
@@ -30,4 +30,18 @@ export interface Process {
   confirmFiles?: boolean
   trigger: ActorCommand | ScheduledCommand
   scenarios: Scenario[]
+}
+export interface AssertionInput {
+  name: string
+  type: string[]
+}
+export interface Assertions {
+  roles: {
+    write: string[]
+    read: string[]
+    all: string[]
+  }
+  inputs: AssertionInput[]
+  entities: StateUpdate[]
+  readModels?: VisibleUpdate[]
 }

@@ -1,40 +1,30 @@
-import type { Process } from './process-types'
+import type { Process, Assertions } from './process-types'
 import { localFilePaths } from './process-constants'
 import * as util from './process-utils'
 import fs from 'fs'
 
 // ======================================================================================
 
-export const confirmProcessFiles = async (process: Process, filePaths = localFilePaths): Promise<string | boolean> => {
+export const confirmProcessFiles = async (
+  process: Process,
+  assertions: Assertions,
+  filePaths = localFilePaths
+): Promise<string | boolean> => {
   let invalid = false
   let errorMessage = ''
 
+  // confirm assertions data present
+  const expectedAssertionGroups = ['roles', 'inputs', 'entities']
+  if (
+    Object.keys(assertions).length === 0 ||
+    !expectedAssertionGroups.every((key) => Object.keys(assertions).includes(key))
+  )
+    return `\n\n'${process.name}' File Issues\n=====================================================================\nAssertions data missing or incomplete`
+
   // 🔑🔑🔑 ROLES 🔑🔑🔑
   // ======================================================================================
-
-  // 🔑 Gather roles
-  // ...gather write roles if an actor command (trigger will have either 'all' OR one or more roles)
-  let writeRoles: string[]
-  if (process.trigger.type === 'ActorCommand') {
-    if (typeof process.trigger.authorized === 'string' || process.trigger.authorized[0] === 'all') writeRoles = []
-    if (typeof process.trigger.authorized !== 'string')
-      writeRoles = process.trigger.authorized.map((role) => util.toPascalCase(role))
-  }
-  // ...gather read roles across scenarios (can be 'all' AND/OR one or more roles across multiple read models)
-  const readRoles = []
-  for (const scenario of process.scenarios) {
-    if (scenario.expectedVisibleUpdates) {
-      for (const expectedVisibleUpdate of scenario.expectedVisibleUpdates) {
-        if (typeof expectedVisibleUpdate.authorized === 'string' || expectedVisibleUpdate.authorized[0] === 'all') break
-        if (typeof expectedVisibleUpdate.authorized !== 'string') {
-          for (const role of expectedVisibleUpdate.authorized) {
-            if (!readRoles.includes(role)) readRoles.push(util.toPascalCase(role))
-          }
-        }
-      }
-    }
-  }
-  const allRoles = [...new Set([...writeRoles, ...readRoles])]
+  const writeRoles = assertions.roles.write
+  const allRoles = assertions.roles.all
 
   // 🔑 Confirm ROLES FILE exists, if needed
   if (allRoles.length > 0 && allRoles.length[0] !== 'all') {
@@ -108,6 +98,7 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
   }
 
   // 🎯 Confirm that trigger INPUTS and INPUT TYPES match scenarios
+  const scenarioInputs = assertions.inputs
   const triggerInputs = []
   if (triggerFile) {
     // gather trigger inputs
@@ -133,32 +124,9 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
     }
 
     if (triggerInputs && triggerInputs.length > 0) {
-      // gather scenario inputs
-      const scenarioInputs = []
-      for (const scenario of process.scenarios) {
-        for (const [key, value] of Object.entries(scenario.inputs)) {
-          scenarioInputs.push({
-            name: util.toCamelCase(key),
-            type: util.inferType(value),
-          })
-        }
-      }
-      const scenarioInputsMerged: { name: string; type: string[] }[] = []
-      for (const scenarioInput of scenarioInputs) {
-        const existingInput = scenarioInputsMerged.find((input) => input.name === scenarioInput.name)
-        if (existingInput) {
-          const existingType = existingInput.type.includes(scenarioInput.type)
-          if (!existingType) existingInput.type.push(scenarioInput.type)
-        } else {
-          scenarioInputsMerged.push({
-            name: scenarioInput.name,
-            type: [scenarioInput.type],
-          })
-        }
-      }
       // determine which scenario inputs are missing from trigger inputs
       const missingInputs = []
-      for (const scenarioInput of scenarioInputsMerged) {
+      for (const scenarioInput of scenarioInputs) {
         const allScenarioMissingInputs = []
         if (!triggerInputs.some((triggerInput) => triggerInput.name === scenarioInput.name)) {
           allScenarioMissingInputs.push({
@@ -174,7 +142,7 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
       // determine which trigger inputs have different (or incomplete) types from scenario inputs
       const incorrectTypeInputs = []
       for (const triggerInput of triggerInputs) {
-        const matchingScenarioInputs = scenarioInputsMerged.filter((input) => input.name === triggerInput.name)
+        const matchingScenarioInputs = scenarioInputs.filter((input) => input.name === triggerInput.name)
         for (const scenarioInput of matchingScenarioInputs) {
           for (const inputType of scenarioInput.type) {
             if (!triggerInput.type.includes(inputType)) {
@@ -226,69 +194,11 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
     }
   }
 
+  console.log('\n🎯 Trigger inputs', triggerInputs)
+
   // 🪐🪐🪐 ENTITIES 🪐🪐🪐
   // ======================================================================================
-
-  // 🪐 Gather entities data across all scenarios
-  const scenarioEntitiesData = []
-  for (const scenario of process.scenarios) {
-    for (const stateUpdate of scenario.expectedStateUpdates) {
-      // ...gather entity values
-      const values: { fieldName: string; fieldType: string }[] = []
-      for (const [key, value] of Object.entries(stateUpdate.values)) {
-        values.push({
-          fieldName: util.toCamelCase(key),
-          fieldType: util.inferType(value),
-        })
-      }
-      // ...enter entity and values
-      if (!scenarioEntitiesData.some((item) => item.entityName === stateUpdate.entityName)) {
-        scenarioEntitiesData.push({
-          entityName: util.toPascalCase(stateUpdate.entityName),
-          values,
-        })
-      }
-    }
-  }
-  // ...merge data for each entity across scenarios
-  const scenarioEntitiesMerged = []
-  for (const entity of scenarioEntitiesData) {
-    // ...if entity not yet in scenarioEntitiesMerged add it
-    if (!scenarioEntitiesMerged.some((scenario) => scenario.entityName === entity.entityName)) {
-      scenarioEntitiesMerged.push(entity)
-      // ...if entity already exists in scenarioEntitiesMerged merge additional data
-    } else {
-      const matchedIndex = scenarioEntitiesMerged.findIndex((entity) => entity.entityName === entity.entityName)
-      //  ...merge values
-      scenarioEntitiesMerged[matchedIndex].values = scenarioEntitiesMerged[matchedIndex].values.concat(entity.values)
-      // ...combine identical fieldNames and merge their field types
-      const entityFieldNames = scenarioEntitiesMerged[matchedIndex].values.map((entity) => entity.fieldName)
-      const entityFieldNamesUnique = [...new Set(entityFieldNames)]
-      for (const entityFieldName of entityFieldNamesUnique) {
-        let fieldTypes = scenarioEntitiesMerged[matchedIndex].values
-          .filter((entity) => entity.fieldName === entityFieldName)
-          .map((entity) => entity.fieldType)
-          .sort()
-        fieldTypes = [...new Set(fieldTypes)].sort().join('|')
-        scenarioEntitiesMerged[matchedIndex].values = scenarioEntitiesMerged[matchedIndex].values.map((entity) => {
-          if (entity.fieldName === entityFieldName) entity.fieldType = fieldTypes
-          return entity
-        })
-      }
-    }
-  }
-  // ...reduce duplicate fieldName in values within each entity
-  const scenarioEntities = []
-  for (const entity of scenarioEntitiesMerged) {
-    const values = entity.values.reduce((acc, value) => {
-      if (!acc.some((item) => item.fieldName === value.fieldName)) acc.push(value)
-      return acc
-    }, [])
-    scenarioEntities.push({
-      entityName: entity.entityName,
-      values,
-    })
-  }
+  const scenarioEntities = assertions.entities
 
   // 🪐 Confirm ENTITY FILES exist for all scenario[i].expectedStateUpdates[i].entityName values
   const missingEntities = []
@@ -313,8 +223,12 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
       const entityFile = fs.readFileSync(entityFilePath, 'utf8')
       const entityConstructorLines = entityFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
       const entityConstructorFieldNames = entityConstructorLines[0].match(/(?<=public |readonly )(.*)(?=:)/g)
+
+      // ! LEFT OFF HERE
+
       const entityFields = entity.values.map((value) => value)
       const entityFieldNames = entity.values.map((value) => value.fieldName) as string[]
+
       const missingFields = entityFieldNames.filter((fieldName) => !entityConstructorFieldNames.includes(fieldName))
       if (missingFields && missingFields.length > 0) {
         invalid = true
@@ -367,83 +281,7 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
 
   // 🔭🔭🔭 READ MODELS 🔭🔭🔭
   // ======================================================================================
-
-  // 🔭 gather read models data across all scenarios
-  const scenarioReadModelsData = []
-  for (const scenario of process.scenarios) {
-    for (const visibleUpdate of scenario.expectedVisibleUpdates) {
-      // ...gather read model values
-      const values: { fieldName: string; fieldType: string }[] = []
-      for (const [key, value] of Object.entries(visibleUpdate.values)) {
-        values.push({
-          fieldName: util.toCamelCase(key),
-          fieldType: util.inferType(value),
-        })
-      }
-      // ...gather read model authorization
-      const readModelAuthorization = Array.isArray(visibleUpdate.authorized)
-        ? visibleUpdate.authorized.map((item) => util.toPascalCase(item))
-        : visibleUpdate.authorized
-      // ...enter read model data
-      if (!scenarioReadModelsData.some((model) => model.readModelName === visibleUpdate.readModelName)) {
-        scenarioReadModelsData.push({
-          readModelName: util.toPascalCase(visibleUpdate.readModelName),
-          values,
-          authorized: typeof readModelAuthorization === 'string' ? [readModelAuthorization] : readModelAuthorization,
-        })
-      }
-    }
-  }
-  // ...merge data for each read model across scenarios
-  const scenarioReadModelsMerged = []
-  for (const readModel of scenarioReadModelsData) {
-    // ...if read model not yet in scenarioEntitiesMerged add it
-    if (!scenarioReadModelsMerged.some((scenario) => scenario.readModelName === readModel.readModelName)) {
-      scenarioReadModelsMerged.push(readModel)
-      // ...if read model already exists in scenarioReadModelsMerged merge additional data
-    } else {
-      const matchedIndex = scenarioReadModelsMerged.findIndex(
-        (readModel) => readModel.readModelName === readModel.readModelName
-      )
-      //  ...merge values
-      scenarioReadModelsMerged[matchedIndex].values = scenarioReadModelsMerged[matchedIndex].values.concat(
-        readModel.values
-      )
-      //  ...merge authorization
-      let mergedRoles = [...scenarioReadModelsMerged[matchedIndex].authorized, ...readModel.authorized]
-      mergedRoles = [...new Set(mergedRoles)]
-      scenarioReadModelsMerged[matchedIndex].authorized = mergedRoles
-      // ...combine identical fieldNames and merge their field types
-      const readModelFieldNames = scenarioReadModelsMerged[matchedIndex].values.map((readModel) => readModel.fieldName)
-      const readModelFieldNamesUnique = [...new Set(readModelFieldNames)]
-      for (const readModelFieldName of readModelFieldNamesUnique) {
-        let fieldTypes = scenarioReadModelsMerged[matchedIndex].values
-          .filter((readModel) => readModel.fieldName === readModelFieldName)
-          .map((readModel) => readModel.fieldType)
-          .sort()
-        fieldTypes = [...new Set(fieldTypes)].sort().join('|')
-        scenarioReadModelsMerged[matchedIndex].values = scenarioReadModelsMerged[matchedIndex].values.map(
-          (readModel) => {
-            if (readModel.fieldName === readModelFieldName) readModel.fieldType = fieldTypes
-            return readModel
-          }
-        )
-      }
-    }
-  }
-  // ...reduce duplicate fieldName in values within each read model
-  const scenarioReadModels = []
-  for (const readModel of scenarioReadModelsMerged) {
-    const values = readModel.values.reduce((acc, value) => {
-      if (!acc.some((item) => item.fieldName === value.fieldName)) acc.push(value)
-      return acc
-    }, [])
-    scenarioReadModels.push({
-      readModelName: readModel.readModelName,
-      values,
-      authorized: readModel.authorized,
-    })
-  }
+  const scenarioReadModels = assertions.readModels
 
   // 🔭 Confirm READ MODEL FILES exist for all scenario[i].expectedVisibleUpdates[i].readModelName values
   const missingReadModels = []

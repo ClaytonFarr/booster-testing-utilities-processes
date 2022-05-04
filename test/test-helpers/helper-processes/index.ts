@@ -1,5 +1,6 @@
 export * from './main'
 export * from './validate-assertions'
+export * from './gather-assertions'
 export * from './confirm-files'
 export * from './test-expectations'
 export * from './process-types'

@@ -1,9 +1,14 @@
-import type { Process } from './process-types'
+import type { Process, Assertions } from './process-types'
 import * as vit from 'vitest'
 
 // ======================================================================================
 
-export const testProcessExpectations = (process: Process, it = vit.it, expect = vit.expect): void => {
+export const testProcessExpectations = (
+  process: Process,
+  assertions: Assertions,
+  it = vit.it,
+  expect = vit.expect
+): void => {
   process
 
   // confirm can call Command with role from trigger.authorized and all scenario[i].inputs[i]
