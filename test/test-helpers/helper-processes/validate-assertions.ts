@@ -45,10 +45,10 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
       }
 
       // ✅ validate scenario[i].inputs[i].name is not blank
-      for (const input of scenario.inputs) {
-        if (!input.name) {
+      for (const [key, value] of Object.entries(scenario.inputs)) {
+        if (!value) {
           invalid = true
-          errorMessage += `\n- ${scenario.name}: has an input with a blank name`
+          errorMessage += `\n- ${scenario.name}: input '${key}' has a blank value`
         }
       }
 
@@ -67,12 +67,12 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
           }
         }
 
-        // ✅ validate scenario[i].expectedStateUpdates[i].values[i].fieldName is not blank
+        // ✅ validate scenario[i].expectedStateUpdates[i].values[i].field value is not blank
         for (const expectedStateUpdate of scenario.expectedStateUpdates) {
-          for (const value of expectedStateUpdate.values) {
-            if (!value.fieldName) {
+          for (const [key, value] of Object.entries(expectedStateUpdate.values)) {
+            if (!value) {
               invalid = true
-              errorMessage += `\n- ${scenario.name}: state update for '${expectedStateUpdate.entityName}' has a blank field name`
+              errorMessage += `\n- ${scenario.name}: state update field '${key}' has a blank value`
             }
           }
         }
@@ -95,12 +95,12 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
           }
         }
 
-        // ✅ validate scenario[i].expectedVisibleUpdates[i].values[i].fieldName is not blank
+        // ✅ validate scenario[i].expectedStateUpdates[i].values[i].field value is not blank
         for (const expectedVisibleUpdate of scenario.expectedVisibleUpdates) {
-          for (const value of expectedVisibleUpdate.values) {
-            if (!value.fieldName) {
+          for (const [key, value] of Object.entries(expectedVisibleUpdate.values)) {
+            if (!value) {
               invalid = true
-              errorMessage += `\n- ${scenario.name}: visible update '${expectedVisibleUpdate.readModelName}' has a field name that is blank`
+              errorMessage += `\n- ${scenario.name}: visible update field '${key}' has a blank value`
             }
           }
         }

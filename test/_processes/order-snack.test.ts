@@ -1,25 +1,6 @@
 import { Process, testProcess } from '../test-helpers/helper-processes'
 import { UUID } from '@boostercloud/framework-types'
 
-// ORDER SNACK PROCESS
-// ===================================================================================
-// <anyone> should be able to SUBMIT
-// - a fruit
-// - an optional drink
-// app should DO WORK to
-// - capitalize fruit name
-// - capitalize drink name
-// - if 'candy' was requested for fruit - make <tattle> to Mom
-// app should TRACK
-// - <fruit>: name, when, who took order
-// - <drink>: name, when, who took order
-// - <tattle>: when, who tattled
-// <anyone> should be able to VIEW
-// - what fruits have been ordered, when, and who took order
-// - what drinks have been ordered, when, and who took order
-// <Mom> should be able to VIEW
-// - when candy was requested
-
 // TESTS
 // ===================================================================================
 
@@ -46,7 +27,6 @@ const testUUID = UUID.generate()
 
 const orderSnack: Process = {
   name: 'Order Snack',
-  confirmFiles: true,
   trigger: {
     type: 'ActorCommand',
     commandName: 'OrderSnack',
@@ -54,59 +34,59 @@ const orderSnack: Process = {
   },
   scenarios: [
     {
-      name: 'Order a healthy snack',
-      inputs: [
-        { name: 'fruit', value: 'apple' },
-        { name: 'drink', value: 'water' },
-      ],
+      name: 'Order healthy snack and drink',
+      inputs: {
+        fruit: 'apple',
+        drink: 'water',
+      },
       expectedStateUpdates: [
         {
           entityName: 'fruit',
-          values: [{ fieldName: 'fruit', value: 'Apple' }],
+          values: { fruit: 'Apple', orderTakenBy: 'string' },
         },
         {
           entityName: 'drink',
-          values: [{ fieldName: 'drink', value: 'Water' }],
+          values: { drink: 'Water', orderTakenBy: 'string' },
         },
       ],
       expectedVisibleUpdates: [
         {
           readModelName: 'fruit read model',
-          values: [{ fieldName: 'fruit', value: 'Apple' }],
+          values: { fruit: 'Apple', orderTakenBy: 'string' },
           authorized: 'all',
         },
         {
           readModelName: 'drink read model',
-          values: [{ fieldName: 'drink', value: 'Water' }],
+          values: { drink: 'Water', orderTakenBy: 'string' },
           authorized: 'all',
         },
       ],
     },
     {
-      name: 'Order candy',
-      inputs: [
-        { name: 'fruit', value: 'candy' },
-        { name: 'tid', value: testUUID },
-      ],
+      name: 'Order candy & tattle',
+      inputs: {
+        fruit: 'candy',
+        tid: testUUID,
+      },
       expectedStateUpdates: [
         {
           entityName: 'fruit',
-          values: [{ fieldName: 'fruit', value: 'Candy' }],
+          values: { fruit: 'Candy', orderTakenBy: 'string' },
         },
         {
           entityName: 'tattle',
-          values: [{ fieldName: 'id', value: testUUID }],
+          values: { id: testUUID, when: 'string', rat: 'string' },
         },
       ],
       expectedVisibleUpdates: [
         {
           readModelName: 'fruit read model',
-          values: [{ fieldName: 'fruit', value: 'Candy' }],
+          values: { fruit: 'Candy', orderTakenBy: 'string' },
           authorized: 'all',
         },
         {
           readModelName: 'tattle read model',
-          values: [{ fieldName: 'id', value: testUUID }],
+          values: { id: testUUID, when: 'string' },
           authorized: ['Mom'],
         },
       ],

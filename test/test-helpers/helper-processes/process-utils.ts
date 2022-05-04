@@ -1,3 +1,5 @@
+import type { UUID } from '@boostercloud/framework-types'
+
 export const toKebabCase = (str: string): string =>
   str
     .replace(/([a-z])([A-Z])/g, '$1-$2')
@@ -40,3 +42,31 @@ export const toSentenceCase = (str: string): string =>
     .replace(/(?:^\w|[A-Z]|\b\w|_\w)/g, (leftTrim, index) =>
       index === 0 ? leftTrim.toUpperCase() : leftTrim.toUpperCase()
     )
+
+export const inferType = (val: string | number | boolean | Record<string, unknown> | unknown[] | UUID): string => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  let type: string
+  switch (val) {
+    case 'string':
+      type = 'string'
+      break
+    case 'number':
+      type = 'string'
+      break
+    case 'true':
+    case 'false':
+    case 'boolean':
+      type = 'boolean'
+      break
+    case 'UUID':
+      type = 'UUID'
+      break
+    case 'unknown':
+      type = 'unknown'
+      break
+    default:
+      type = typeof val
+  }
+  if (typeof val === 'string' && val.match(uuidRegex)) type = 'UUID'
+  return type
+}

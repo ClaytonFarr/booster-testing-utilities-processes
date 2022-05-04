@@ -1,5 +1,3 @@
-export const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
 export const localFilePaths = {
   commandsDirectoryPath: 'src/commands',
   scheduledCommandsDirectoryPath: 'src/scheduled-commands',

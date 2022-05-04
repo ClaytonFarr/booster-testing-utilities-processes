@@ -1,5 +1,5 @@
 import type { Process } from './process-types'
-import { localFilePaths, uuidRegex } from './process-constants'
+import { localFilePaths } from './process-constants'
 import * as util from './process-utils'
 import fs from 'fs'
 
@@ -21,7 +21,7 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
       writeRoles = process.trigger.authorized.map((role) => util.toPascalCase(role))
   }
   // ...gather read roles across scenarios (can be 'all' AND/OR one or more roles across multiple read models)
-  const readRoles: string[] = []
+  const readRoles = []
   for (const scenario of process.scenarios) {
     if (scenario.expectedVisibleUpdates) {
       for (const expectedVisibleUpdate of scenario.expectedVisibleUpdates) {
@@ -124,7 +124,8 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
     if (!triggerInputs || triggerInputs.length === 0) {
       let expectedInputNames = []
       for (const scenario of process.scenarios) {
-        if (scenario.inputs) for (const input of scenario.inputs) expectedInputNames.push(util.toCamelCase(input.name))
+        if (scenario.inputs)
+          for (const [key] of Object.entries(scenario.inputs)) expectedInputNames.push(util.toCamelCase(key))
       }
       expectedInputNames = [...new Set(expectedInputNames)].sort()
       invalid = true
@@ -133,37 +134,31 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
 
     if (triggerInputs && triggerInputs.length > 0) {
       // gather scenario inputs
-      const scenarioInputs = process.scenarios.map((scenario) => {
-        if (scenario.inputs) {
-          const scenarioInputs = scenario.inputs.map((input) => {
-            const typeIsUUID =
-              typeof input.value === 'string' && (input.value.match(uuidRegex) || input.value === 'UUID')
-            return {
-              name: util.toCamelCase(input.name),
-              type: input.type || typeIsUUID ? 'UUID' : typeof input.value, // if type not explicitly set, infer from input value
-            }
+      const scenarioInputs = []
+      for (const scenario of process.scenarios) {
+        for (const [key, value] of Object.entries(scenario.inputs)) {
+          scenarioInputs.push({
+            name: util.toCamelCase(key),
+            type: util.inferType(value),
           })
-          return scenarioInputs
         }
-      })
-      const scenarioInputsFlat = [].concat(...scenarioInputs)
-      const scenarioInputsReducedObject = scenarioInputsFlat.reduce((acc, curr) => {
-        if (acc[curr.name]) {
-          acc[curr.name].type.push(curr.type)
+      }
+      const scenarioInputsMerged: { name: string; type: string[] }[] = []
+      for (const scenarioInput of scenarioInputs) {
+        const existingInput = scenarioInputsMerged.find((input) => input.name === scenarioInput.name)
+        if (existingInput) {
+          const existingType = existingInput.type.includes(scenarioInput.type)
+          if (!existingType) existingInput.type.push(scenarioInput.type)
         } else {
-          acc[curr.name] = {
-            name: curr.name,
-            type: [curr.type],
-          }
+          scenarioInputsMerged.push({
+            name: scenarioInput.name,
+            type: [scenarioInput.type],
+          })
         }
-        return acc
-      }, {})
-      const scenarioInputsReducedArray = Object.keys(scenarioInputsReducedObject).map(
-        (key) => scenarioInputsReducedObject[key]
-      )
+      }
       // determine which scenario inputs are missing from trigger inputs
       const missingInputs = []
-      for (const scenarioInput of scenarioInputsReducedArray) {
+      for (const scenarioInput of scenarioInputsMerged) {
         const allScenarioMissingInputs = []
         if (!triggerInputs.some((triggerInput) => triggerInput.name === scenarioInput.name)) {
           allScenarioMissingInputs.push({
@@ -179,7 +174,7 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
       // determine which trigger inputs have different (or incomplete) types from scenario inputs
       const incorrectTypeInputs = []
       for (const triggerInput of triggerInputs) {
-        const matchingScenarioInputs = scenarioInputsReducedArray.filter((input) => input.name === triggerInput.name)
+        const matchingScenarioInputs = scenarioInputsMerged.filter((input) => input.name === triggerInput.name)
         for (const scenarioInput of matchingScenarioInputs) {
           for (const inputType of scenarioInput.type) {
             if (!triggerInput.type.includes(inputType)) {
@@ -240,11 +235,10 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
     for (const stateUpdate of scenario.expectedStateUpdates) {
       // ...gather entity values
       const values: { fieldName: string; fieldType: string }[] = []
-      for (const value of stateUpdate.values) {
-        const typeIsUUID = typeof value.value === 'string' && (value.value.match(uuidRegex) || value.value === 'UUID')
+      for (const [key, value] of Object.entries(stateUpdate.values)) {
         values.push({
-          fieldName: util.toCamelCase(value.fieldName),
-          fieldType: typeIsUUID ? 'UUID' : typeof value.value,
+          fieldName: util.toCamelCase(key),
+          fieldType: util.inferType(value),
         })
       }
       // ...enter entity and values
@@ -380,11 +374,10 @@ export const confirmProcessFiles = async (process: Process, filePaths = localFil
     for (const visibleUpdate of scenario.expectedVisibleUpdates) {
       // ...gather read model values
       const values: { fieldName: string; fieldType: string }[] = []
-      for (const value of visibleUpdate.values) {
-        const typeIsUUID = typeof value.value === 'string' && (value.value.match(uuidRegex) || value.value === 'UUID')
+      for (const [key, value] of Object.entries(visibleUpdate.values)) {
         values.push({
-          fieldName: util.toCamelCase(value.fieldName),
-          fieldType: typeIsUUID ? 'UUID' : typeof value.value,
+          fieldName: util.toCamelCase(key),
+          fieldType: util.inferType(value),
         })
       }
       // ...gather read model authorization
