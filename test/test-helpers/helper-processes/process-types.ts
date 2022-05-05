@@ -36,11 +36,13 @@ export interface Process {
 
 export interface AssertionInput {
   name: string
-  type: string[]
+  types: string[]
+  testValue?: unknown
 }
 export interface AssertionValue {
   fieldName: string
-  fieldType: unknown
+  fieldTypes: unknown
+  testValue?: unknown
 }
 export interface AssertionEntity {
   entityName: string

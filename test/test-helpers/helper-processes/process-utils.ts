@@ -43,7 +43,7 @@ export const toSentenceCase = (str: string): string =>
       index === 0 ? leftTrim.toUpperCase() : leftTrim.toUpperCase()
     )
 
-export const inferType = (val: string | number | boolean | Record<string, unknown> | unknown[] | UUID): string => {
+export const inferValueType = (val: string | number | boolean | Record<string, unknown> | unknown[] | UUID): string => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   let type: string
   switch (val) {
@@ -69,4 +69,24 @@ export const inferType = (val: string | number | boolean | Record<string, unknow
   }
   if (typeof val === 'string' && val.match(uuidRegex)) type = 'UUID'
   return type
+}
+
+export const testableValue = (val: unknown): unknown => {
+  let value: unknown
+  switch (val) {
+    // if value is a type keyword, return testable value as null
+    case 'string':
+    case 'number':
+    case 'true':
+    case 'false':
+    case 'boolean':
+    case 'UUID':
+    case 'unknown':
+      value = undefined
+      break
+    // otherwise return stated value as testable value
+    default:
+      value = val
+  }
+  return value
 }
