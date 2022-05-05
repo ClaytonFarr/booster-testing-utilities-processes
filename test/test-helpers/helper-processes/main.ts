@@ -1,4 +1,4 @@
-import type { Process } from './process-types'
+import type { Process, Assertions } from './process-types'
 import { validateProcessAssertions } from './validate-assertions'
 import { gatherProcessAssertions } from './gather-assertions'
 import { confirmProcessFiles } from './confirm-files'
@@ -11,7 +11,7 @@ export const testProcess = (process: Process): void => {
   describe(process.name, async () => {
     let testMessage = ''
 
-    // 1. Validate process assertions
+    // 1. Validate process inputs
     const validInputCheck = validateProcessAssertions(process)
     const validInputPass = validInputCheck === true ? true : false
     if (typeof validInputCheck === 'string') testMessage = validInputCheck
@@ -20,7 +20,8 @@ export const testProcess = (process: Process): void => {
     })
 
     // 2. Gather assertions from process
-    const processAssertions = gatherProcessAssertions(process)
+    let processAssertions: Assertions
+    if (validInputCheck === true) processAssertions = gatherProcessAssertions(process)
 
     // 3. Confirm application files needed exist and are well-formed
     //    - will default to checking files unless process.confirmFiles explicitly set to false
