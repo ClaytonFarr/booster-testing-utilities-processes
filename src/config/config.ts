@@ -16,12 +16,16 @@ Booster.configure('local', (config: BoosterConfig): void => {
   config.tokenVerifiers = [
     {
       issuer: 'booster',
-      publicKey: fs.readFileSync(path.join(__dirname, '..', '..', 'keys', 'testing-public.key'), 'utf8'),
+      publicKey: Promise.resolve(
+        fs.readFileSync(path.join(__dirname, '..', '..', 'keys', 'testing-public.key'), 'utf8')
+      ),
       rolesClaim: 'booster:role',
     },
     {
       issuer: 'booster',
-      publicKey: fs.readFileSync(path.join(__dirname, '..', '..', 'keys', 'testing-public.key'), 'utf8'),
+      publicKey: Promise.resolve(
+        fs.readFileSync(path.join(__dirname, '..', '..', 'keys', 'testing-public.key'), 'utf8')
+      ),
       rolesClaim: 'booster:role',
       extraValidation: async () => {
         throw new Error('Unauthorized')
@@ -38,12 +42,16 @@ Booster.configure('test', (config: BoosterConfig): void => {
   config.tokenVerifiers = [
     {
       issuer: 'booster',
-      publicKey: fs.readFileSync(path.join(__dirname, '..', '..', 'keys', 'testing-public.key'), 'utf8'),
+      publicKey: Promise.resolve(
+        fs.readFileSync(path.join(__dirname, '..', '..', 'keys', 'testing-public.key'), 'utf8')
+      ),
       rolesClaim: 'booster:role',
     },
     {
       issuer: 'booster',
-      publicKey: fs.readFileSync(path.join(__dirname, '..', '..', 'keys', 'testing-public.key'), 'utf8'),
+      publicKey: Promise.resolve(
+        fs.readFileSync(path.join(__dirname, '..', '..', 'keys', 'testing-public.key'), 'utf8')
+      ),
       rolesClaim: 'booster:role',
       extraValidation: async () => {
         throw new Error('Unauthorized')
