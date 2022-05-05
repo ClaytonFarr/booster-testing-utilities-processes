@@ -194,8 +194,6 @@ export const confirmProcessFiles = async (
     }
   }
 
-  console.log('\n🎯 Trigger inputs', triggerInputs)
-
   // 🪐🪐🪐 ENTITIES 🪐🪐🪐
   // ======================================================================================
   const scenarioEntities = assertions.entities
@@ -214,7 +212,7 @@ export const confirmProcessFiles = async (
     }
   }
 
-  // 🪐 Confirm each ENTITY file contains constructor FIELDS for all scenario[i].expectedStateUpdates[i].values[i].fieldName values
+  // 🪐 Confirm each ENTITY file contains constructor FIELDS for all scenario[i].expectedStateUpdates[i].values fieldName values
   for (const entity of scenarioEntities) {
     const entityFileName = util.toKebabCase(entity.entityName)
     const entityFilePath = `${filePaths.entitiesDirectoryPath}/${entityFileName}.ts`
@@ -223,12 +221,8 @@ export const confirmProcessFiles = async (
       const entityFile = fs.readFileSync(entityFilePath, 'utf8')
       const entityConstructorLines = entityFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
       const entityConstructorFieldNames = entityConstructorLines[0].match(/(?<=public |readonly )(.*)(?=:)/g)
-
-      // ! LEFT OFF HERE
-
-      const entityFields = entity.values.map((value) => value)
-      const entityFieldNames = entity.values.map((value) => value.fieldName) as string[]
-
+      const entityFields = entity.values.map((field) => field)
+      const entityFieldNames = entity.values.map((field) => field.fieldName) as string[]
       const missingFields = entityFieldNames.filter((fieldName) => !entityConstructorFieldNames.includes(fieldName))
       if (missingFields && missingFields.length > 0) {
         invalid = true
@@ -236,7 +230,7 @@ export const confirmProcessFiles = async (
           errorMessage += `\n🪐 Entity '${util.toPascalCase(
             entity.entityName
           )}' does not have field: ${util.toCamelCase(missingField)} (${
-            entityFields.find((field) => field.fieldName === missingField).type
+            entityFields.find((field) => field.fieldName === missingField).fieldType
           })`
         })
       }
@@ -318,7 +312,7 @@ export const confirmProcessFiles = async (
           errorMessage += `\n🔭 Read Model '${util.toPascalCase(
             readModel.readModelName
           )}' does not have field: ${util.toCamelCase(missingField)} (${
-            readModelFields.find((field) => field.fieldName === missingField).value
+            readModelFields.find((field) => field.fieldName === missingField).fieldType
           })`
         })
       }
@@ -407,7 +401,7 @@ export const confirmProcessFiles = async (
       if (readModelHasAuthorization) {
         if (readModelAuthorizationString.startsWith("'all'"))
           readModelHasCorrectAuthorization = assertedReadModelRoles.includes('all')
-        if (!readModelAuthorizationString.startsWith("'all'") && assertedReadModelRoles?.length > 0) {
+        if (!readModelAuthorizationString.startsWith("'all'") && assertedReadModelRoles !== 'all') {
           let readModelFileRoles = readModelAuthorizationString.replace(/\[|\]|/g, '').split(',')
           readModelFileRoles = readModelFileRoles.map((role: string) => role.trim())
           readModelHasCorrectAuthorization = assertedReadModelRoles.every((role: string) =>

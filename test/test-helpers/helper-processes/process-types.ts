@@ -1,9 +1,9 @@
-import type { UUID } from '@boostercloud/framework-types'
+// Process Scenario Types
 
 export interface ActorCommand {
   type: 'ActorCommand'
   commandName: string
-  authorized: string[] | string
+  authorized: 'all' | string[]
 }
 export interface ScheduledCommand {
   type: 'ScheduledCommand'
@@ -12,16 +12,16 @@ export interface ScheduledCommand {
 }
 export interface StateUpdate {
   entityName: string
-  values: Record<string, string | number | boolean | Record<string, unknown> | unknown[] | UUID>
+  values: Record<string, unknown>
 }
 export interface VisibleUpdate {
   readModelName: string
-  values: Record<string, string | number | boolean | Record<string, unknown> | unknown[] | UUID>
+  values: Record<string, unknown>
   authorized: string[] | string
 }
 export interface Scenario {
   name: string
-  inputs: Record<string, string | number | boolean | Record<string, unknown> | unknown[] | UUID>
+  inputs: Record<string, unknown>
   expectedStateUpdates: StateUpdate[]
   expectedVisibleUpdates?: VisibleUpdate[]
 }
@@ -31,9 +31,25 @@ export interface Process {
   trigger: ActorCommand | ScheduledCommand
   scenarios: Scenario[]
 }
+
+// Gathered Assertions Types
+
 export interface AssertionInput {
   name: string
   type: string[]
+}
+export interface AssertionValue {
+  fieldName: string
+  fieldType: unknown
+}
+export interface AssertionEntity {
+  entityName: string
+  values: AssertionValue[]
+}
+export interface AssertionReadModel {
+  readModelName: string
+  values: AssertionValue[]
+  authorized: 'all' | string[]
 }
 export interface Assertions {
   roles: {
@@ -42,6 +58,6 @@ export interface Assertions {
     all: string[]
   }
   inputs: AssertionInput[]
-  entities: StateUpdate[]
-  readModels?: VisibleUpdate[]
+  entities: AssertionEntity[]
+  readModels?: AssertionReadModel[]
 }

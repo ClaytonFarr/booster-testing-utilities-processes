@@ -1,4 +1,4 @@
-import type { Process, StateUpdate, VisibleUpdate, Assertions } from './process-types'
+import type { Process, AssertionEntity, AssertionReadModel, Assertions } from './process-types'
 import * as util from './process-utils'
 
 export const gatherProcessAssertions = (process: Process): Assertions => {
@@ -52,7 +52,7 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
     for (const [key, value] of Object.entries(scenario.inputs)) {
       scenarioInputsData.push({
         name: util.toCamelCase(key),
-        type: util.inferType(value),
+        type: util.inferType(value as string),
       })
     }
   }
@@ -71,8 +71,6 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
     }
   }
 
-  console.log('⭐️ GATHERED: scenarioInputs', scenarioInputs)
-
   // 🪐 Gather ENTITIES data across all scenarios
   // ======================================================================================
   const scenarioEntitiesData = []
@@ -83,7 +81,7 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
       for (const [key, value] of Object.entries(stateUpdate.values)) {
         values.push({
           fieldName: util.toCamelCase(key),
-          fieldType: util.inferType(value),
+          fieldType: util.inferType(value as string),
         })
       }
       // ...enter entity and values
@@ -123,7 +121,7 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
     }
   }
   // ...reduce duplicate fieldName in values within each entity
-  const scenarioEntities: StateUpdate[] = []
+  const scenarioEntities: AssertionEntity[] = []
   for (const entity of scenarioEntitiesMerged) {
     const values = entity.values.reduce((acc, value) => {
       if (!acc.some((item) => item.fieldName === value.fieldName)) acc.push(value)
@@ -145,7 +143,7 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
       for (const [key, value] of Object.entries(visibleUpdate.values)) {
         values.push({
           fieldName: util.toCamelCase(key),
-          fieldType: util.inferType(value),
+          fieldType: util.inferType(value as string),
         })
       }
       // ...gather read model authorization
@@ -200,7 +198,7 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
     }
   }
   // ...reduce duplicate fieldName in values within each read model
-  const scenarioReadModels: VisibleUpdate[] = []
+  const scenarioReadModels: AssertionReadModel[] = []
   for (const readModel of scenarioReadModelsMerged) {
     const values = readModel.values.reduce((acc, value) => {
       if (!acc.some((item) => item.fieldName === value.fieldName)) acc.push(value)
