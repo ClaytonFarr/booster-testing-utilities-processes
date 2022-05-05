@@ -1,8 +1,8 @@
-import type { Process, Assertions } from './process-types'
+import type { Process, Assertions } from './types'
 import { validateProcessAssertions } from './validate-assertions'
 import { gatherProcessAssertions } from './gather-assertions'
 import { confirmProcessFiles } from './confirm-files'
-import { testProcessExpectations } from './test-expectations'
+import { testProcessExpectations } from './confirm-expectations'
 import { describe, it, expect } from 'vitest'
 
 // ======================================================================================
@@ -38,10 +38,8 @@ export const testProcess = (process: Process): void => {
     }
 
     // 4. Test if process expectations are met by application
-    if (validInputCheck === true && process.confirmFiles && filesPresentCheck === true) {
-      it('should match scenarios(s) expected behavior', async () => {
-        testProcessExpectations(process, processAssertions)
-      })
+    if (validInputCheck === true && filesPresentCheck === true) {
+      void testProcessExpectations(process, processAssertions)
     }
 
     console.log(testMessage)

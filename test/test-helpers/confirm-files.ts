@@ -1,6 +1,5 @@
-import type { Process, Assertions } from './process-types'
-import { localFilePaths } from './process-constants'
-import * as util from './process-utils'
+import type { Process, Assertions, AssertionValue } from './types'
+import * as util from './utils'
 import fs from 'fs'
 
 // ======================================================================================
@@ -8,18 +7,28 @@ import fs from 'fs'
 export const confirmProcessFiles = async (
   process: Process,
   assertions: Assertions,
-  filePaths = localFilePaths
+  filePaths?: Record<string, string>
 ): Promise<string | boolean> => {
+  const path = {
+    commandsDirectoryPath: filePaths?.commandsDirectoryPath ?? 'src/commands',
+    scheduledCommandsDirectoryPath: filePaths?.scheduledCommandsDirectoryPath ?? 'src/scheduled-commands',
+    eventHandlersDirectoryPath: filePaths?.eventHandlersDirectoryPath ?? 'src/event-handlers',
+    eventsDirectoryPath: filePaths?.eventsDirectoryPath ?? 'src/events',
+    entitiesDirectoryPath: filePaths?.entitiesDirectoryPath ?? 'src/entities',
+    readModelsDirectoryPath: filePaths?.readModelsDirectoryPath ?? 'src/read-models',
+    rolesPath: filePaths?.rolesPath ?? 'src/roles.ts',
+  }
   let invalid = false
   let errorMessage = ''
 
-  // confirm assertions data present
-  const expectedAssertionGroups = ['roles', 'inputs', 'entities']
+  // Confirm assertions data present
+  // -----------------------------------------------------------------------------------------------
+  const expectedAssertionGroups = ['roles', 'allInputs', 'allEntities']
   if (
     Object.keys(assertions).length === 0 ||
     !expectedAssertionGroups.every((key) => Object.keys(assertions).includes(key))
   )
-    return `\n\n'${process.name}' File Issues\n=====================================================================\nAssertions data missing or incomplete`
+    return `\n\n'${process.name}' File Issue\n=====================================================================\nAssertions data missing or incomplete`
 
   // 🔑🔑🔑 ROLES 🔑🔑🔑
   // ======================================================================================
@@ -28,7 +37,7 @@ export const confirmProcessFiles = async (
 
   // 🔑 Confirm ROLES FILE exists, if needed
   if (allRoles.length > 0 && allRoles.length[0] !== 'all') {
-    const rolesFilePath = filePaths.rolesPath
+    const rolesFilePath = path.rolesPath
     const rolesFileExists = fs.existsSync(rolesFilePath)
     if (!rolesFileExists) {
       invalid = true
@@ -58,7 +67,7 @@ export const confirmProcessFiles = async (
 
   // 🎯 Confirm TRIGGER FILE exists
   const triggerFileDirectory =
-    process.trigger.type === 'ActorCommand' ? filePaths.commandsDirectoryPath : filePaths.scheduledCommandsDirectoryPath
+    process.trigger.type === 'ActorCommand' ? path.commandsDirectoryPath : path.scheduledCommandsDirectoryPath
   const triggerFileName = util.toKebabCase(process.trigger.commandName)
   const triggerFileExists = fs.existsSync(`${triggerFileDirectory}/${triggerFileName}.ts`)
   if (!triggerFileExists) {
@@ -98,7 +107,7 @@ export const confirmProcessFiles = async (
   }
 
   // 🎯 Confirm that trigger INPUTS and INPUT TYPES match scenarios
-  const scenarioInputs = assertions.inputs
+  const scenarioInputs = assertions.allInputs
   const triggerInputs = []
   if (triggerFile) {
     // gather trigger inputs
@@ -196,26 +205,26 @@ export const confirmProcessFiles = async (
 
   // 🪐🪐🪐 ENTITIES 🪐🪐🪐
   // ======================================================================================
-  const scenarioEntities = assertions.entities
+  const scenarioEntities = assertions.allEntities
 
   // 🪐 Confirm ENTITY FILES exist for all scenario[i].expectedStateUpdates[i].entityName values
   const missingEntities = []
   for (const entity of scenarioEntities) {
     const entityFileName = util.toKebabCase(entity.entityName)
-    if (!fs.existsSync(`${filePaths.entitiesDirectoryPath}/${entityFileName}.ts`)) missingEntities.push(entityFileName)
+    if (!fs.existsSync(`${path.entitiesDirectoryPath}/${entityFileName}.ts`)) missingEntities.push(entityFileName)
   }
   if (missingEntities.length > 0) {
     invalid = true
     const MissingEntitiesUnique = [...new Set(missingEntities)]
     for (const missingEntity of MissingEntitiesUnique) {
-      errorMessage += `\n🪐 Entity file missing: '${filePaths.entitiesDirectoryPath}/${missingEntity}.ts'`
+      errorMessage += `\n🪐 Entity file missing: '${path.entitiesDirectoryPath}/${missingEntity}.ts'`
     }
   }
 
   // 🪐 Confirm each ENTITY file contains constructor FIELDS for all scenario[i].expectedStateUpdates[i].values fieldName values
   for (const entity of scenarioEntities) {
     const entityFileName = util.toKebabCase(entity.entityName)
-    const entityFilePath = `${filePaths.entitiesDirectoryPath}/${entityFileName}.ts`
+    const entityFilePath = `${path.entitiesDirectoryPath}/${entityFileName}.ts`
     const entityFileExists = fs.existsSync(entityFilePath)
     if (entityFileExists) {
       const entityFile = fs.readFileSync(entityFilePath, 'utf8')
@@ -240,12 +249,12 @@ export const confirmProcessFiles = async (
   // 🪐 Confirm each ENTITY constructor FIELD TYPE matches the type inferred from scenario[i].expectedStateUpdates[i].values[i].value
   for (const entity of scenarioEntities) {
     // infer field types from assertions
-    const assertedEntityFields = entity.values.map((item) => {
+    const assertedEntityFields: AssertionValue[] = entity.values.map((item) => {
       return { fieldName: item.fieldName, fieldTypes: item.fieldTypes }
     })
     // compare entity field types to types inferred from assertions
     const entityFileName = util.toKebabCase(entity.entityName)
-    const entityFilePath = `${filePaths.entitiesDirectoryPath}/${entityFileName}.ts`
+    const entityFilePath = `${path.entitiesDirectoryPath}/${entityFileName}.ts`
     const entityFileExists = fs.existsSync(entityFilePath)
     if (entityFileExists) {
       const entityFile = fs.readFileSync(entityFilePath, 'utf8')
@@ -261,7 +270,7 @@ export const confirmProcessFiles = async (
           .sort()
         const entityFieldTypesString = entityFieldTypes.map((type) => type.trim()).join('|')
         const mismatchedFieldTypes = assertedEntityFields.find(
-          (item) => item.fieldName === entityFieldName && item.fieldTypes !== entityFieldTypesString
+          (item) => item.fieldName === entityFieldName && !item.fieldTypes.includes(entityFieldTypesString)
         )
         if (mismatchedFieldTypes) {
           invalid = true
@@ -275,27 +284,27 @@ export const confirmProcessFiles = async (
 
   // 🔭🔭🔭 READ MODELS 🔭🔭🔭
   // ======================================================================================
-  const scenarioReadModels = assertions.readModels
+  const scenarioReadModels = assertions.allReadModels
 
   // 🔭 Confirm READ MODEL FILES exist for all scenario[i].expectedVisibleUpdates[i].readModelName values
   const missingReadModels = []
   for (const readModel of scenarioReadModels) {
     const readModelFileName = util.toKebabCase(readModel.readModelName)
-    if (!fs.existsSync(`${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`))
+    if (!fs.existsSync(`${path.readModelsDirectoryPath}/${readModelFileName}.ts`))
       missingReadModels.push(readModelFileName)
   }
   if (missingReadModels.length > 0) {
     invalid = true
     const MissingReadModelsUnique = [...new Set(missingReadModels)]
     for (const missingReadModel of MissingReadModelsUnique) {
-      errorMessage += `\n🔭 Read Model file missing: '${filePaths.readModelsDirectoryPath}/${missingReadModel}.ts'`
+      errorMessage += `\n🔭 Read Model file missing: '${path.readModelsDirectoryPath}/${missingReadModel}.ts'`
     }
   }
 
   // 🔭 Confirm each READ MODEL contains constructor FIELDS for all scenario[i].expectedVisibleUpdates[i].values[i].fieldName values
   for (const readModel of scenarioReadModels) {
     const readModelFileName = util.toKebabCase(readModel.readModelName)
-    const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
+    const readModelFilePath = `${path.readModelsDirectoryPath}/${readModelFileName}.ts`
     const readModelFileExists = fs.existsSync(readModelFilePath)
     if (readModelFileExists) {
       const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
@@ -327,7 +336,7 @@ export const confirmProcessFiles = async (
     })
     // compare read model constructor field types to types inferred from assertions
     const readModelFileName = util.toKebabCase(readModel.readModelName)
-    const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
+    const readModelFilePath = `${path.readModelsDirectoryPath}/${readModelFileName}.ts`
     const readModelFileExists = fs.existsSync(readModelFilePath)
     if (readModelFileExists) {
       const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
@@ -343,7 +352,7 @@ export const confirmProcessFiles = async (
           .sort()
         const readModelFieldTypesString = readModelFieldType.map((type) => type.trim()).join('|')
         const mismatchedFieldTypes = assertedReadModelFields.find(
-          (item) => item.fieldName === readModelFieldName && item.fieldTypes !== readModelFieldTypesString
+          (item) => item.fieldName === readModelFieldName && !item.fieldTypes.includes(readModelFieldTypesString)
         )
         if (mismatchedFieldTypes) {
           invalid = true
@@ -361,7 +370,7 @@ export const confirmProcessFiles = async (
   const scenarioEntityNames = scenarioEntities.map((entity) => entity.entityName)
   for (const readModel of scenarioReadModels) {
     const readModelFileName = util.toKebabCase(readModel.readModelName)
-    const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
+    const readModelFilePath = `${path.readModelsDirectoryPath}/${readModelFileName}.ts`
     const readModelFileExists = fs.existsSync(readModelFilePath)
     if (readModelFileExists) {
       const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
@@ -386,13 +395,13 @@ export const confirmProcessFiles = async (
   // 🔭 Confirm each read model has correct AUTHORIZATION
   for (const readModel of scenarioReadModels) {
     const readModelFileName = util.toKebabCase(readModel.readModelName)
-    const readModelFilePath = `${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`
+    const readModelFilePath = `${path.readModelsDirectoryPath}/${readModelFileName}.ts`
     const readModelFileExists = fs.existsSync(readModelFilePath)
     if (readModelFileExists) {
       const assertedReadModelRoles = scenarioReadModels.find(
         (item) => item.readModelName === readModel.readModelName
       )?.authorized
-      const readModelFile = fs.readFileSync(`${filePaths.readModelsDirectoryPath}/${readModelFileName}.ts`, 'utf8')
+      const readModelFile = fs.readFileSync(`${path.readModelsDirectoryPath}/${readModelFileName}.ts`, 'utf8')
       let readModelAuthorizationString = readModelFile.match(/authorize: (.*)/g)[0].replace(/authorize: /g, '')
       readModelAuthorizationString = readModelAuthorizationString.slice(0, -1) // remove trailing comma
       const readModelHasAuthorization =
@@ -434,9 +443,9 @@ export const confirmProcessFiles = async (
   if (triggerRegisteredEvents) {
     triggerRegisteredEvents.forEach((eventName) => {
       const eventFileName = util.toKebabCase(eventName)
-      if (!fs.existsSync(`${filePaths.eventsDirectoryPath}/${eventFileName}.ts`)) {
+      if (!fs.existsSync(`${path.eventsDirectoryPath}/${eventFileName}.ts`)) {
         invalid = true
-        errorMessage += `\n🚀 Event file missing: '${filePaths.eventsDirectoryPath}/${eventFileName}.ts'`
+        errorMessage += `\n🚀 Event file missing: '${path.eventsDirectoryPath}/${eventFileName}.ts'`
       }
     })
   }
@@ -445,7 +454,7 @@ export const confirmProcessFiles = async (
   for (const entity of scenarioEntities) {
     const entityReducedEvents = []
     const entityFileName = util.toKebabCase(entity.entityName)
-    const entityFilePath = `${filePaths.entitiesDirectoryPath}/${entityFileName}.ts`
+    const entityFilePath = `${path.entitiesDirectoryPath}/${entityFileName}.ts`
     const entityFileExists = fs.existsSync(entityFilePath)
     if (entityFileExists) {
       const entityFile = fs.readFileSync(entityFilePath, 'utf8')
@@ -469,10 +478,10 @@ export const confirmProcessFiles = async (
           const eventHandlersMatchingEntity = []
           // ...gather information from event handlers (fileName, eventName, registeredEvents)
           const eventHandlers = []
-          const eventHandlerFiles = fs.readdirSync(filePaths.eventHandlersDirectoryPath)
+          const eventHandlerFiles = fs.readdirSync(path.eventHandlersDirectoryPath)
           eventHandlerFiles.forEach((eventHandlerFileName) => {
             const thisEventHandlerInfo = { fileName: eventHandlerFileName, initiatingEvent: '', registeredEvents: [] }
-            const eventHandlerFilePath = `${filePaths.eventHandlersDirectoryPath}/${eventHandlerFileName}`
+            const eventHandlerFilePath = `${path.eventHandlersDirectoryPath}/${eventHandlerFileName}`
             const eventHandlerFile = fs.readFileSync(eventHandlerFilePath, 'utf8')
             const eventHandlerInitiatingEvent = eventHandlerFile
               .match(/@EventHandler\((\w+)/g)[0]

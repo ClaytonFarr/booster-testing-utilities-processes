@@ -1,6 +1,3 @@
-// Imports
-// ====================================================================================
-
 import { ApplicationTester, ProviderTestHelper } from '@boostercloud/application-tester'
 import { AWSTestHelper } from '@boostercloud/framework-provider-aws-infrastructure'
 import { ApolloClient } from 'apollo-client'

@@ -1,13 +1,10 @@
 import type { ApolloClient } from 'apollo-client'
 import type { NormalizedCacheObject } from 'apollo-cache-inmemory'
 import type { DocumentNode } from 'graphql'
-import { applicationUnderTest } from '../test-helpers'
-import { waitForIt, looseJSONparse, isStringJSON } from '.'
+import { applicationUnderTest } from './infrastructure'
+import { waitForIt, looseJSONparse, isStringJSON } from './utils'
 import { faker } from '@faker-js/faker'
 import gql from 'graphql-tag'
-
-// Read Model Test Mutation
-// =====================================================================================================================
 
 // Read Model Queries
 // =====================================================================================================================

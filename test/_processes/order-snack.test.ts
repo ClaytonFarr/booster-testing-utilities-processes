@@ -1,4 +1,4 @@
-import { Process, testProcess } from '../test-helpers/helper-processes'
+import { Process, testProcess } from '../test-helpers'
 import { UUID } from '@boostercloud/framework-types'
 
 // TESTS
