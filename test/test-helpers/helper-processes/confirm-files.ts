@@ -37,7 +37,7 @@ export const confirmProcessFiles = async (
 
     // 🔑 confirm roles.ts contains necessary ROLE DEFINITIONS
     if (rolesFileExists) {
-      if (allRoles.length > 0 && allRoles.length[0] !== 'all') {
+      if (allRoles.length > 0 && !allRoles.includes('all')) {
         const rolesFile = fs.readFileSync(rolesFilePath, 'utf8')
         const rolesFileLines = rolesFile.split('\n')
         const missingRoles = allRoles.filter(
@@ -79,7 +79,7 @@ export const confirmProcessFiles = async (
     if (triggerHasAuthorization) {
       if (writeRoles.length === 0) triggerHasCorrectAuthorization = triggerAuthorizationString.startsWith("'all'")
       if (writeRoles.length > 0) {
-        let triggerFileRoles = triggerAuthorizationString.replace(/\[|\]|/g, '').split(',')
+        let triggerFileRoles = triggerAuthorizationString.replace(/\[|\]|'/g, '').split(',')
         triggerFileRoles = triggerFileRoles.map((role: string) => role.trim())
         triggerHasCorrectAuthorization = writeRoles.every((role: string) => triggerFileRoles.includes(role))
       }
@@ -131,7 +131,7 @@ export const confirmProcessFiles = async (
         if (!triggerInputs.some((triggerInput) => triggerInput.name === scenarioInput.name)) {
           allScenarioMissingInputs.push({
             name: scenarioInput.name,
-            type: scenarioInput.type,
+            types: scenarioInput.types,
           })
         } // ...remove duplicates
         for (const scenarioInput of allScenarioMissingInputs) {
@@ -144,7 +144,7 @@ export const confirmProcessFiles = async (
       for (const triggerInput of triggerInputs) {
         const matchingScenarioInputs = scenarioInputs.filter((input) => input.name === triggerInput.name)
         for (const scenarioInput of matchingScenarioInputs) {
-          for (const inputType of scenarioInput.type) {
+          for (const inputType of scenarioInput.types) {
             if (!triggerInput.type.includes(inputType)) {
               incorrectTypeInputs.forEach((input) => {
                 if (input.name === scenarioInput.name) input.type.push(inputType)
@@ -230,7 +230,7 @@ export const confirmProcessFiles = async (
           errorMessage += `\n🪐 Entity '${util.toPascalCase(
             entity.entityName
           )}' does not have field: ${util.toCamelCase(missingField)} (${
-            entityFields.find((field) => field.fieldName === missingField).fieldType
+            entityFields.find((field) => field.fieldName === missingField).fieldTypes
           })`
         })
       }
@@ -241,7 +241,7 @@ export const confirmProcessFiles = async (
   for (const entity of scenarioEntities) {
     // infer field types from assertions
     const assertedEntityFields = entity.values.map((item) => {
-      return { fieldName: item.fieldName, type: item.fieldType }
+      return { fieldName: item.fieldName, fieldTypes: item.fieldTypes }
     })
     // compare entity field types to types inferred from assertions
     const entityFileName = util.toKebabCase(entity.entityName)
@@ -261,12 +261,12 @@ export const confirmProcessFiles = async (
           .sort()
         const entityFieldTypesString = entityFieldTypes.map((type) => type.trim()).join('|')
         const mismatchedFieldTypes = assertedEntityFields.find(
-          (item) => item.fieldName === entityFieldName && item.type !== entityFieldTypesString
+          (item) => item.fieldName === entityFieldName && item.fieldTypes !== entityFieldTypesString
         )
         if (mismatchedFieldTypes) {
           invalid = true
           errorMessage += `\n🪐 Entity '${entity.entityName}' field '${entityFieldName}' missing types (expecting ${
-            assertedEntityFields.find((item) => item.fieldName === entityFieldName).type
+            assertedEntityFields.find((item) => item.fieldName === entityFieldName).fieldTypes
           })`
         }
       })
@@ -312,7 +312,7 @@ export const confirmProcessFiles = async (
           errorMessage += `\n🔭 Read Model '${util.toPascalCase(
             readModel.readModelName
           )}' does not have field: ${util.toCamelCase(missingField)} (${
-            readModelFields.find((field) => field.fieldName === missingField).fieldType
+            readModelFields.find((field) => field.fieldName === missingField).fieldTypes
           })`
         })
       }
@@ -323,7 +323,7 @@ export const confirmProcessFiles = async (
   for (const readModel of scenarioReadModels) {
     // infer field types from assertions
     const assertedReadModelFields = readModel.values.map((item) => {
-      return { fieldName: item.fieldName, type: item.fieldType }
+      return { fieldName: item.fieldName, fieldTypes: item.fieldTypes }
     })
     // compare read model constructor field types to types inferred from assertions
     const readModelFileName = util.toKebabCase(readModel.readModelName)
@@ -343,14 +343,14 @@ export const confirmProcessFiles = async (
           .sort()
         const readModelFieldTypesString = readModelFieldType.map((type) => type.trim()).join('|')
         const mismatchedFieldTypes = assertedReadModelFields.find(
-          (item) => item.fieldName === readModelFieldName && item.type !== readModelFieldTypesString
+          (item) => item.fieldName === readModelFieldName && item.fieldTypes !== readModelFieldTypesString
         )
         if (mismatchedFieldTypes) {
           invalid = true
           errorMessage += `\n🔭 Read Model '${
             readModel.readModelName
           }' field '${readModelFieldName}' missing types (expecting ${
-            assertedReadModelFields.find((item) => item.fieldName === readModelFieldName).type
+            assertedReadModelFields.find((item) => item.fieldName === readModelFieldName).fieldTypes
           })`
         }
       })

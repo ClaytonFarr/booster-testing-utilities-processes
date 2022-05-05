@@ -1,4 +1,11 @@
-import type { Process, AssertionEntity, AssertionReadModel, Assertions } from './process-types'
+import type {
+  Process,
+  AssertionInput,
+  AssertionValue,
+  AssertionEntity,
+  AssertionReadModel,
+  Assertions,
+} from './process-types'
 import * as util from './process-utils'
 
 export const gatherProcessAssertions = (process: Process): Assertions => {
@@ -21,7 +28,7 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
       writeRoles = process.trigger.authorized.map((role) => util.toPascalCase(role))
   }
   // ...gather read roles across scenarios (can be 'all' AND/OR one or more roles across multiple read models)
-  const readRoles: string[] = []
+  let readRoles: string[] = []
   for (const scenario of process.scenarios) {
     if (scenario.expectedVisibleUpdates) {
       for (const expectedVisibleUpdate of scenario.expectedVisibleUpdates) {
@@ -29,7 +36,7 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
           typeof expectedVisibleUpdate.authorized === 'string' ||
           expectedVisibleUpdate.authorized[0].toLowerCase() === 'all'
         )
-          break
+          readRoles = ['all']
         if (typeof expectedVisibleUpdate.authorized !== 'string') {
           for (const role of expectedVisibleUpdate.authorized) {
             if (!readRoles.includes(role)) readRoles.push(util.toPascalCase(role))
@@ -52,21 +59,23 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
     for (const [key, value] of Object.entries(scenario.inputs)) {
       scenarioInputsData.push({
         name: util.toCamelCase(key),
-        type: util.inferType(value as string),
+        types: util.inferValueType(value as string),
+        testValue: util.testableValue(value),
       })
     }
   }
   // merge all inputs from scenarios into one array
-  const scenarioInputs: { name: string; type: string[] }[] = []
+  const scenarioInputs: AssertionInput[] = []
   for (const scenarioInput of scenarioInputsData) {
     const existingInput = scenarioInputs.find((input) => input.name === scenarioInput.name)
     if (existingInput) {
-      const existingType = existingInput.type.includes(scenarioInput.type)
-      if (!existingType) existingInput.type.push(scenarioInput.type)
+      const existingType = existingInput.types.includes(scenarioInput.types)
+      if (!existingType) existingInput.types.push(scenarioInput.types)
     } else {
       scenarioInputs.push({
         name: scenarioInput.name,
-        type: [scenarioInput.type],
+        types: [scenarioInput.types],
+        testValue: scenarioInput.testValue,
       })
     }
   }
@@ -77,11 +86,12 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
   for (const scenario of process.scenarios) {
     for (const stateUpdate of scenario.expectedStateUpdates) {
       // ...gather entity values
-      const values: { fieldName: string; fieldType: string }[] = []
+      const values: AssertionValue[] = []
       for (const [key, value] of Object.entries(stateUpdate.values)) {
         values.push({
           fieldName: util.toCamelCase(key),
-          fieldType: util.inferType(value as string),
+          fieldTypes: util.inferValueType(value as string),
+          testValue: util.testableValue(value),
         })
       }
       // ...enter entity and values
@@ -110,11 +120,11 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
       for (const entityFieldName of entityFieldNamesUnique) {
         let fieldTypes = scenarioEntitiesMerged[matchedIndex].values
           .filter((entity) => entity.fieldName === entityFieldName)
-          .map((entity) => entity.fieldType)
+          .map((entity) => entity.fieldTypes)
           .sort()
         fieldTypes = [...new Set(fieldTypes)].sort().join('|')
         scenarioEntitiesMerged[matchedIndex].values = scenarioEntitiesMerged[matchedIndex].values.map((entity) => {
-          if (entity.fieldName === entityFieldName) entity.fieldType = fieldTypes
+          if (entity.fieldName === entityFieldName) entity.fieldTypes = fieldTypes
           return entity
         })
       }
@@ -139,11 +149,12 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
   for (const scenario of process.scenarios) {
     for (const visibleUpdate of scenario.expectedVisibleUpdates) {
       // ...gather read model values
-      const values: { fieldName: string; fieldType: string }[] = []
+      const values: AssertionValue[] = []
       for (const [key, value] of Object.entries(visibleUpdate.values)) {
         values.push({
           fieldName: util.toCamelCase(key),
-          fieldType: util.inferType(value as string),
+          fieldTypes: util.inferValueType(value as string),
+          testValue: util.testableValue(value),
         })
       }
       // ...gather read model authorization
@@ -185,12 +196,12 @@ export const gatherProcessAssertions = (process: Process): Assertions => {
       for (const readModelFieldName of readModelFieldNamesUnique) {
         let fieldTypes = scenarioReadModelsMerged[matchedIndex].values
           .filter((readModel) => readModel.fieldName === readModelFieldName)
-          .map((readModel) => readModel.fieldType)
+          .map((readModel) => readModel.fieldTypes)
           .sort()
         fieldTypes = [...new Set(fieldTypes)].sort().join('|')
         scenarioReadModelsMerged[matchedIndex].values = scenarioReadModelsMerged[matchedIndex].values.map(
           (readModel) => {
-            if (readModel.fieldName === readModelFieldName) readModel.fieldType = fieldTypes
+            if (readModel.fieldName === readModelFieldName) readModel.fieldTypes = fieldTypes
             return readModel
           }
         )
