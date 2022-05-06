@@ -1,5 +1,13 @@
 # Booster Testing Utilities
 
+NOTE
+
+- testing will check if GraphQL can be connected to
+- new Booster projects must have following for GraphQL server to connectable
+  - event
+  - entity that reduces event
+
+
 > ### ⭐️ Heads Up ⭐️
 >
 > This is currently a work in progress - and opinionated.
