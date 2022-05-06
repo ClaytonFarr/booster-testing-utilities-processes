@@ -2,6 +2,7 @@ import type { EventEnvelope } from '@boostercloud/framework-types'
 import { applicationUnderTest, unAuthGraphQLclient, authGraphQLclient } from './infrastructure'
 import { faker } from '@faker-js/faker'
 import * as command from './command-helpers'
+import * as readModel from './readmodel-helpers'
 import * as type from './types'
 import * as util from './utils'
 import * as vit from 'vitest'
@@ -28,18 +29,21 @@ export const testProcessExpectations = async (
   // Gather Assertions
   // -----------------------------------------------------------------------------------------------
   const scenarios = assertions.scenarios
-  const authorizedRoles = assertions.roles.write
+  const authorizedSubmitRoles = assertions.roles.write
   const commandName = assertions.trigger.commandName
   const isActorCommand = assertions.trigger.type === 'ActorCommand'
+  const inputAssertions = assertions.allInputs
   const allInputs = process.scenarios.reduce((acc, scenario) => {
     acc = { ...acc, ...scenario.inputs }
     return acc
   }, {})
 
-  // Create Test Resources
+  // Create common test resources
   // -----------------------------------------------------------------------------------------------
-  const graphQLclient = authorizedRoles.includes('all') ? unAuthGraphQLclient : authGraphQLclient(authorizedRoles[0])
-  const defaultTestInputs: type.CommandInput[] = util.convertScenarioInputsToCommandInputs(allInputs)
+  const submitGraphQLclient = authorizedSubmitRoles.includes('all')
+    ? unAuthGraphQLclient
+    : authGraphQLclient(authorizedSubmitRoles[0])
+  const defaultTestInputs: type.CommandInput[] = util.convertScenarioInputsToCommandInputs(allInputs, inputAssertions)
   const defaultMutation = command.createCommandMutation(commandName, defaultTestInputs)
   const defaultVariables = command.createAllVariables(defaultTestInputs)
   const defaultVariablesEmpty = command.createEmptyVariables(defaultTestInputs)
@@ -55,17 +59,19 @@ export const testProcessExpectations = async (
           // ...create reference value
           const tid = scenario.inputs?.tid ?? faker.datatype.uuid().toString()
 
-          // ...create test resources
+          // ...create specific test resources
           const scenarioInputs = { tid, ...scenario.inputs } // add tid input if not already present in scenario
-          const acceptedInputs: type.CommandInput[] = util.convertScenarioInputsToCommandInputs(scenarioInputs)
+          const acceptedInputs: type.CommandInput[] = util.convertScenarioInputsToCommandInputs(
+            scenarioInputs,
+            inputAssertions
+          )
           const commandVariables = command.createAllVariables(acceptedInputs)
           const commandMutation = command.createCommandMutation(commandName, acceptedInputs)
 
           // ...call command with inputs using one of accepted roles
-          await graphQLclient.mutate({ variables: commandVariables, mutation: commandMutation })
+          await submitGraphQLclient.mutate({ variables: commandVariables, mutation: commandMutation })
 
           // Confirm expected state changes occurred for each entity
-          let stateUpdateResults: boolean[]
           for (const stateUpdate of scenario.expectedStateUpdates) {
             it(`should update entity '${stateUpdate.entityName}' correctly`, async () => {
               const primaryKey = `${stateUpdate.entityName}-${tid}-snapshot`
@@ -90,41 +96,67 @@ export const testProcessExpectations = async (
               )[0] as unknown as EventEnvelope
 
               // confirm snapshot updated state as expected
-              let updateHasCorrectState: boolean[]
-              for (const [key, value] of Object.entries(stateUpdate.values)) {
-                let stateCheck: boolean
-                const isTestableValue = util.isTestableValue(value)
-                if (isTestableValue) stateCheck = !!matchingUpdate.value[key] === value
-                if (!isTestableValue) stateCheck = !!matchingUpdate.value[key] // if no value present check if key is has any value
-                updateHasCorrectState.push(stateCheck)
+              const updateHasCorrectState: boolean[] = []
+              if (stateUpdate.values) {
+                for (const [key, value] of Object.entries(stateUpdate.values)) {
+                  let correctState: boolean
+                  const isTestableValue = !util.valueIsTypeKeyword(value)
+                  if (isTestableValue) correctState = matchingUpdate?.value[key] === value
+                  if (!isTestableValue) correctState = !!matchingUpdate?.value[key] // if no testable value given confirm key is present with any value
+                  updateHasCorrectState.push(correctState)
+                }
               }
-              const stateUpdatedCorrectly = matchingUpdate && !updateHasCorrectState.includes(false)
-              stateUpdateResults.push(stateUpdatedCorrectly)
+              if (stateUpdate.notValues) {
+                for (const [key, value] of Object.entries(stateUpdate.notValues)) {
+                  let correctState: boolean
+                  const isTestableValue = !util.valueIsTypeKeyword(value)
+                  if (isTestableValue) correctState = matchingUpdate?.value[key] !== value
+                  if (!isTestableValue) correctState = !matchingUpdate?.value[key] // if no testable value given confirm key is not present at all
+                  updateHasCorrectState.push(correctState)
+                }
+              }
+              const stateUpdatedCorrectly = !!matchingUpdate && !updateHasCorrectState.includes(false)
               expect(stateUpdatedCorrectly).toBe(true)
             })
           }
 
-          // If state updates completed correctly...
-          if (
-            stateUpdateResults.length === scenario.expectedStateUpdates.length &&
-            !stateUpdateResults.includes(false)
-          ) {
-            // Confirm expected visible changes are true, if any, for each read model
-            for (const visibleUpdate of scenario.expectedVisibleUpdates) {
-              it(`should update read model '${visibleUpdate.readModelName}' correctly`, async () => {
-                // !
-                // ! LEFT OFF HERE
-                // !
-              })
-            }
+          for (const visibleUpdate of scenario.expectedVisibleUpdates) {
+            // create graphql client with correct authorization
+            const readGraphQLclient = visibleUpdate.authorized.includes('all')
+              ? unAuthGraphQLclient
+              : authGraphQLclient(visibleUpdate.authorized[0])
+
+            it(`should update read model '${visibleUpdate.readModelName}' correctly`, async () => {
+              // try to query readModel for expected values
+              let shouldHaveItems: Record<string, unknown>[] = []
+              if (visibleUpdate.values) {
+                shouldHaveItems = await readModel.evaluateReadModelProjection(
+                  readGraphQLclient,
+                  visibleUpdate.readModelName,
+                  visibleUpdate.values
+                )
+              }
+              // try to query readModel for NOT values
+              let shouldNotHaveItems: Record<string, unknown>[] = []
+              if (visibleUpdate.notValues) {
+                shouldNotHaveItems = await readModel.evaluateReadModelProjection(
+                  readGraphQLclient,
+                  visibleUpdate.readModelName,
+                  visibleUpdate.notValues
+                )
+              }
+              // evaluate results
+              const expectedQueryResult = shouldHaveItems.length > 0 && shouldNotHaveItems.length === 0
+              expect(expectedQueryResult).toBe(true)
+            })
           }
         })
       }
 
       // Confirm command can be executed with additional roles, if specified
-      if (!authorizedRoles.includes('all') && authorizedRoles.length > 2) {
-        authorizedRoles.shift() // skip first role since already tested above if present
-        authorizedRoles.forEach(async (role) => {
+      if (!authorizedSubmitRoles.includes('all') && authorizedSubmitRoles.length > 2) {
+        authorizedSubmitRoles.shift() // skip first role since already tested above if present
+        authorizedSubmitRoles.forEach(async (role) => {
           it(`'${process.trigger.commandName}' command should allow '${role}' role to make request`, async () => {
             const check = await command.wasAuthorizedRequestAllowed(role, defaultMutation, defaultVariables)
             expect(check).toBe(true)
@@ -136,7 +168,7 @@ export const testProcessExpectations = async (
       it(`'${process.trigger.commandName}' command should throw error when inputs are passed with empty values`, async () => {
         // submit command
         try {
-          await graphQLclient.mutate({
+          await submitGraphQLclient.mutate({
             variables: defaultVariablesEmpty,
             mutation: defaultMutation,
           })
