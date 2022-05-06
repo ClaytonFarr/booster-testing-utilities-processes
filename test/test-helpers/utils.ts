@@ -55,7 +55,7 @@ export const inferValueType = (val: string | number | boolean | Record<string, u
       type = 'string'
       break
     case 'number':
-      type = 'string'
+      type = 'number'
       break
     case 'true':
     case 'false':
@@ -75,31 +75,78 @@ export const inferValueType = (val: string | number | boolean | Record<string, u
   return type
 }
 
-export const isTestableValue = (val: unknown): boolean => {
+export const inferGraphQLValueType = (val: string | number | boolean | UUID): string => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  let type: string
+  // if value is a string check for type keyword and convert to GraphQL equivalent
+  if (typeof val === 'string')
+    switch (val) {
+      case 'string':
+        type = 'String'
+        break
+      case 'number':
+        type = 'Int'
+        break
+      case 'true':
+      case 'false':
+      case 'boolean':
+        type = 'Boolean'
+        break
+      case 'UUID':
+        type = 'ID'
+        break
+      default:
+        type = 'String'
+    }
+  // if value is a string and matches UUID regex, convert to GraphQL ID
+  if (typeof val === 'string' && val.match(uuidRegex)) type = 'ID'
+  // if value is not a string, convert value type to GraphQL equivalent
+  if (typeof val !== 'string') {
+    const valType = typeof val
+    switch (valType) {
+      case 'bigint':
+      case 'number':
+        type = 'Int'
+        break
+      case 'boolean':
+        type = 'Boolean'
+        break
+      default:
+        type = undefined
+    }
+  }
+  return type
+}
+
+export const valueIsTypeKeyword = (val: unknown): boolean => {
   let check: boolean
+  if (typeof val !== 'string') check = false
   switch (val) {
     case 'string':
     case 'number':
     case 'boolean':
     case 'UUID':
     case 'unknown':
-      check = false
+      check = true
       break
     default:
-      check = true
+      check = false
   }
   return check
 }
 
 export const convertScenarioInputsToCommandInputs = (
-  scenarioInputs: Record<string, string | number | boolean | UUID>
+  scenarioInputs: Record<string, string | number | boolean | UUID>,
+  inputAssertions: types.AssertionInput[]
 ): types.CommandInput[] => {
   const commandInputs: types.CommandInput[] = []
   for (const [key, value] of Object.entries(scenarioInputs)) {
+    const required = inputAssertions.find((assertion) => assertion.name === key)?.required ?? false
     commandInputs.push({
       name: toCamelCase(key),
-      type: inferValueType(value as string),
+      type: key === 'tid' ? 'ID' : inferGraphQLValueType(value),
       validExample: value,
+      required,
     })
   }
   return commandInputs
