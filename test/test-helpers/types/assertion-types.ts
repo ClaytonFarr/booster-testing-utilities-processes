@@ -5,6 +5,7 @@ import type { ActorCommand, ScheduledCommand, Scenario } from './process-types'
 export interface AssertionInput {
   name: string
   types: string[]
+  required: boolean
 }
 export interface AssertionValue {
   fieldName: string
@@ -12,11 +13,11 @@ export interface AssertionValue {
 }
 export interface AssertionEntity {
   entityName: string
-  values: AssertionValue[]
+  fields: AssertionValue[]
 }
 export interface AssertionReadModel {
   readModelName: string
-  values: AssertionValue[]
+  fields: AssertionValue[]
   authorized: 'all' | string[]
 }
 export interface Assertions {

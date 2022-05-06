@@ -14,11 +14,13 @@ export interface ScheduledCommand {
 }
 export interface StateUpdate {
   entityName: string
-  values: Record<string, unknown>
+  values?: Record<string, string | number | boolean | UUID>
+  notValues?: Record<string, string | number | boolean | UUID> // values that should not be present in state update
 }
 export interface VisibleUpdate {
   readModelName: string
-  values: Record<string, unknown>
+  values?: Record<string, string | number | boolean | UUID>
+  notValues?: Record<string, string | number | boolean | UUID> // values that should not be visible
   authorized: string[] | string
 }
 export interface Scenario {

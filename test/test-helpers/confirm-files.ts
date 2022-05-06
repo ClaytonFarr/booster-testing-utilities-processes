@@ -111,13 +111,14 @@ export const confirmProcessFiles = async (
   const triggerInputs = []
   if (triggerFile) {
     // gather trigger inputs
-    const triggerInputsArray = [...triggerFile.matchAll(/readonly ([a-zA-Z]+)\?*:\s*(.+)/g)]
+    const triggerInputsArray = [...triggerFile.matchAll(/readonly ([a-zA-Z?]+):\s*(.+)/g)]
     triggerInputsArray.forEach((input) => {
       let inputTypes = input[2].replace(/,|\/\/.*/g, '').split(' | ')
       inputTypes = inputTypes.map((type) => type.trim())
       triggerInputs.push({
-        name: input[1],
+        name: input[1].replace(/\?/g, ''),
         type: inputTypes,
+        required: input[1].includes('?') ? false : true,
       })
     })
     // alert if trigger has no inputs defined
@@ -148,7 +149,7 @@ export const confirmProcessFiles = async (
             missingInputs.push(scenarioInput)
         }
       }
-      // determine which trigger inputs have different (or incomplete) types from scenario inputs
+      // determine if trigger inputs have different (or incomplete) types from scenario inputs
       const incorrectTypeInputs = []
       for (const triggerInput of triggerInputs) {
         const matchingScenarioInputs = scenarioInputs.filter((input) => input.name === triggerInput.name)
@@ -164,6 +165,20 @@ export const confirmProcessFiles = async (
                   type: [inputType],
                 })
             }
+          }
+        }
+      }
+      // determine if trigger inputs have different required status from scenario inputs
+      const incorrectRequiredInputs = []
+      for (const triggerInput of triggerInputs) {
+        const matchingScenarioInputs = scenarioInputs.filter((input) => input.name === triggerInput.name)
+        for (const scenarioInput of matchingScenarioInputs) {
+          if (scenarioInput.required !== triggerInput.required) {
+            incorrectRequiredInputs.push({
+              name: scenarioInput.name,
+              expectedRequire: scenarioInput.required,
+              triggerRequire: triggerInput.required,
+            })
           }
         }
       }
@@ -183,7 +198,16 @@ export const confirmProcessFiles = async (
           } (missing ${incorrectTypeInput.type.join('|')})`
         }
       }
-      // Later: possibly alert when trigger has inputs present that are not included in any scenario
+      // alert if any inputs required status is mismatched
+      if (incorrectRequiredInputs && incorrectRequiredInputs.length > 0) {
+        invalid = true
+        for (const incorrectRequiredInput of incorrectRequiredInputs) {
+          errorMessage += `\n🎯 Trigger input '${incorrectRequiredInput.name}' should be ${
+            incorrectRequiredInput.expectedRequire ? 'required' : 'optional'
+          } (is ${incorrectRequiredInput.triggerRequire ? 'required' : 'optional'})`
+        }
+      }
+      // LATER: possibly alert when trigger has inputs present that are not included in any scenario
     }
   }
 
@@ -230,8 +254,8 @@ export const confirmProcessFiles = async (
       const entityFile = fs.readFileSync(entityFilePath, 'utf8')
       const entityConstructorLines = entityFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
       const entityConstructorFieldNames = entityConstructorLines[0].match(/(?<=public |readonly )(.*)(?=:)/g)
-      const entityFields = entity.values.map((field) => field)
-      const entityFieldNames = entity.values.map((field) => field.fieldName) as string[]
+      const entityFields = entity.fields.map((field) => field)
+      const entityFieldNames = entity.fields.map((field) => field.fieldName) as string[]
       const missingFields = entityFieldNames.filter((fieldName) => !entityConstructorFieldNames.includes(fieldName))
       if (missingFields && missingFields.length > 0) {
         invalid = true
@@ -249,7 +273,7 @@ export const confirmProcessFiles = async (
   // 🪐 Confirm each ENTITY constructor FIELD TYPE matches the type inferred from scenario[i].expectedStateUpdates[i].values[i].value
   for (const entity of scenarioEntities) {
     // infer field types from assertions
-    const assertedEntityFields: AssertionValue[] = entity.values.map((item) => {
+    const assertedEntityFields: AssertionValue[] = entity.fields.map((item) => {
       return { fieldName: item.fieldName, fieldTypes: item.fieldTypes }
     })
     // compare entity field types to types inferred from assertions
@@ -310,8 +334,8 @@ export const confirmProcessFiles = async (
       const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
       const readModelConstructorLines = readModelFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
       const readModelConstructorFieldNames = readModelConstructorLines[0].match(/(?<=public |readonly )(.*)(?=:)/g)
-      const readModelFields = readModel.values.map((value) => value)
-      const readModelFieldNames = readModel.values.map((value) => value.fieldName) as string[]
+      const readModelFields = readModel.fields.map((value) => value)
+      const readModelFieldNames = readModel.fields.map((value) => value.fieldName) as string[]
       const missingFields = readModelFieldNames.filter(
         (fieldName) => !readModelConstructorFieldNames?.includes(fieldName)
       )
@@ -331,7 +355,7 @@ export const confirmProcessFiles = async (
   // 🔭 Confirm each READ MODEL constructor FIELD TYPE matches the type inferred from scenario[i].expectedVisibleUpdates[i].values[i].value
   for (const readModel of scenarioReadModels) {
     // infer field types from assertions
-    const assertedReadModelFields = readModel.values.map((item) => {
+    const assertedReadModelFields = readModel.fields.map((item) => {
       return { fieldName: item.fieldName, fieldTypes: item.fieldTypes }
     })
     // compare read model constructor field types to types inferred from assertions
@@ -478,26 +502,28 @@ export const confirmProcessFiles = async (
           const eventHandlersMatchingEntity = []
           // ...gather information from event handlers (fileName, eventName, registeredEvents)
           const eventHandlers = []
-          const eventHandlerFiles = fs.readdirSync(path.eventHandlersDirectoryPath)
-          eventHandlerFiles.forEach((eventHandlerFileName) => {
-            const thisEventHandlerInfo = { fileName: eventHandlerFileName, initiatingEvent: '', registeredEvents: [] }
-            const eventHandlerFilePath = `${path.eventHandlersDirectoryPath}/${eventHandlerFileName}`
-            const eventHandlerFile = fs.readFileSync(eventHandlerFilePath, 'utf8')
-            const eventHandlerInitiatingEvent = eventHandlerFile
-              .match(/@EventHandler\((\w+)/g)[0]
-              .replace(/@EventHandler\(|/g, '')
-            thisEventHandlerInfo.initiatingEvent = eventHandlerInitiatingEvent
-            let eventHandlerRegisteredEvents = eventHandlerFile.match(/new (\w+)/gm)
-            eventHandlerRegisteredEvents = eventHandlerRegisteredEvents.filter(
-              (event) => !event.toLowerCase().includes('date') && !event.toLowerCase().includes('error')
-            )
-            if (eventHandlerRegisteredEvents) {
-              eventHandlerRegisteredEvents.forEach((registeredEventName) => {
-                if (!thisEventHandlerInfo.registeredEvents.includes(registeredEventName))
-                  thisEventHandlerInfo.registeredEvents.push(registeredEventName)
-              })
-            }
-          })
+          if (fs.existsSync(path.eventHandlersDirectoryPath)) {
+            const eventHandlerFiles = fs.readdirSync(path.eventHandlersDirectoryPath)
+            eventHandlerFiles.forEach((eventHandlerFileName) => {
+              const thisEventHandlerInfo = { fileName: eventHandlerFileName, initiatingEvent: '', registeredEvents: [] }
+              const eventHandlerFilePath = `${path.eventHandlersDirectoryPath}/${eventHandlerFileName}`
+              const eventHandlerFile = fs.readFileSync(eventHandlerFilePath, 'utf8')
+              const eventHandlerInitiatingEvent = eventHandlerFile
+                .match(/@EventHandler\((\w+)/g)[0]
+                .replace(/@EventHandler\(|/g, '')
+              thisEventHandlerInfo.initiatingEvent = eventHandlerInitiatingEvent
+              let eventHandlerRegisteredEvents = eventHandlerFile.match(/new (\w+)/gm)
+              eventHandlerRegisteredEvents = eventHandlerRegisteredEvents.filter(
+                (event) => !event.toLowerCase().includes('date') && !event.toLowerCase().includes('error')
+              )
+              if (eventHandlerRegisteredEvents) {
+                eventHandlerRegisteredEvents.forEach((registeredEventName) => {
+                  if (!thisEventHandlerInfo.registeredEvents.includes(registeredEventName))
+                    thisEventHandlerInfo.registeredEvents.push(registeredEventName)
+                })
+              }
+            })
+          }
           // ...check which (if any) event handlers register an event reduced by the entity
           entityReducedEvents.forEach((eventName) => {
             for (const eventHandler of eventHandlers) {
