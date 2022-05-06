@@ -9,7 +9,7 @@ import { Mom, Dad } from '../roles'
 export class OrderCocktail {
   public constructor(
     readonly drink: string,
-    readonly tid?: string | UUID // input used by test utilities
+    readonly tid?: UUID // input used by test utilities
   ) {}
 
   public static async handle(command: OrderCocktail, register: Register): Promise<void> {
@@ -20,16 +20,13 @@ export class OrderCocktail {
     const orderTakenBy = ['Erik', 'Abi'][Math.floor(Math.random() * 2)]
 
     // do work
-    // @work01: capitalize the 'drink' value
     const capitalize = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
 
     // register events
     if (command.drink) {
       register.events(
         new DrinkOrdered(
-          // @requiredInputs: { drink: string }
-          // @aReducingEntity: 'Drink'
-          orderId,
+          orderId, //
           capitalize(command.drink),
           orderTakenBy
         )
@@ -37,7 +34,3 @@ export class OrderCocktail {
     }
   }
 }
-
-// @work01-inputs: { drink: 'gimlet' }
-// @work01-entity: 'Drink'
-// @work01-shouldHave: ['Gimlet']

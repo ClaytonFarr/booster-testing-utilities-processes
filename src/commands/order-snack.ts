@@ -11,7 +11,7 @@ export class OrderSnack {
   public constructor(
     readonly fruit: string,
     readonly drink?: string, // @validExample: 'water'
-    readonly tid?: string | UUID // input used by test utilities
+    readonly tid?: UUID // input used by test utilities
   ) {}
 
   public static async handle(command: OrderSnack, register: Register): Promise<void> {
@@ -24,15 +24,12 @@ export class OrderSnack {
     const orderTakenBy = ['Cindy', 'John', 'Sue', 'Mike', 'Erik', 'Abi'][Math.floor(Math.random() * 6)]
 
     // do work
-    // @work01: capitalize the 'fruit' value
     const capitalize = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
 
     // register events
     register.events(
       new FruitOrdered(
-        // @requiredInputs: { fruit: string }
-        // @aReducingEntity: 'Fruit'
-        orderId,
+        orderId, //
         capitalize(command.fruit),
         orderTakenBy
       )
@@ -40,21 +37,16 @@ export class OrderSnack {
     if (command.drink) {
       register.events(
         new DrinkOrdered(
-          // @requiredInputs: { fruit: string, drink: 'water' }
-          // @aReducingEntity: 'Drink'
-          orderId,
+          orderId, //
           capitalize(command.drink),
           orderTakenBy
         )
       )
     }
-    // @work02: tattle when candy is ordered
     if (command.fruit.toLowerCase() === 'candy') {
       register.events(
         new CandyOrdered(
-          // @requiredInputs: { fruit: 'candy' }
-          // @aReducingEntity: 'Tattle'
-          orderId,
+          orderId, //
           new Date().toISOString(),
           orderTakenBy
         )
@@ -62,11 +54,3 @@ export class OrderSnack {
     }
   }
 }
-
-// @work01-inputs: { fruit: 'apple' }
-// @work01-entity: 'Fruit'
-// @work01-shouldHave: ['Apple']
-
-// @work02-inputs: { fruit: 'candy' }
-// @work02-entity: 'Tattle'
-// @work02-shouldHave: true
