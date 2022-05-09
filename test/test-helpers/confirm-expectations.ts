@@ -120,12 +120,16 @@ export const testProcessExpectations = async (
           )
         } catch (error) {
           console.log(
-            `💥 'Did not update state for '${stateUpdate.entityName}' within ${resultWaitTime / 1000} seconds`
+            `💥 'No state update found for '${stateUpdate.entityName}' within ${resultWaitTime / 1000} seconds`
           )
         }
 
         // check if any matching snapshots exist for entity
         const matchingUpdate = (await applicationUnderTest.query.events(primaryKey))[0] as unknown as EventEnvelope
+        if (!matchingUpdate) {
+          invalid = true
+          thisScenarioErrorMessages += `\n👽 No matching state update found for entity '${stateUpdate.entityName}'\n   - Searched for key: '${primaryKey}'`
+        }
 
         // confirm snapshot updated state as expected
         const stateUpdateHasCorrectState: boolean[] = []
@@ -166,7 +170,7 @@ export const testProcessExpectations = async (
         }
 
         const stateUpdatedCorrectly = !!matchingUpdate && !stateUpdateHasCorrectState.includes(false)
-        if (!stateUpdatedCorrectly) {
+        if (matchingUpdate && !stateUpdatedCorrectly) {
           thisScenarioHasErrors = true
           thisScenarioErrorMessages += `\n👽 Entity '${util.toPascalCase(
             stateUpdate.entityName
