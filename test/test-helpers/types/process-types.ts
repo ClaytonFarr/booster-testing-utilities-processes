@@ -26,9 +26,10 @@ export interface VisibleUpdate {
 export interface Scenario {
   name: string
   inputs?: Record<string, string | number | boolean | UUID> // inputs are only present on Actor Commands
-  expectedStateUpdates: 'rejected' | StateUpdate[]
+  shouldBeRejected?: boolean // e.g. if scenario is invalid, confirm it should be rejected/receive error from application
+  expectedStateUpdates: StateUpdate[]
   expectedVisibleUpdates?: VisibleUpdate[] // a scenario may not have any visible updates
-  // LATER: possibly add 'none' option to stateUpdates and visibleUpdates
+  // LATER: possibly add 'none' option to expectedStateUpdates and expectedVisibleUpdates
 }
 export interface Process {
   name: string
