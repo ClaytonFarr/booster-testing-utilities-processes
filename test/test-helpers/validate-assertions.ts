@@ -1,4 +1,5 @@
 import type { Process } from './types'
+import * as utils from './utils'
 
 export const validateProcessAssertions = (process: Process): boolean | string => {
   let allScenariosAreNamed = false
@@ -69,19 +70,23 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
 
         // ✅ validate scenario[i].expectedStateUpdates[i].values[i].field value is not blank
         for (const expectedStateUpdate of scenario.expectedStateUpdates) {
-          for (const [key, value] of Object.entries(expectedStateUpdate.values)) {
-            if (!value) {
-              invalid = true
-              errorMessage += `\n- ${scenario.name}: state update field '${key}' has a blank value`
-            }
+          if (!expectedStateUpdate.values || expectedStateUpdate.values.length === 0) {
+            invalid = true
+            errorMessage += `\n- ${scenario.name}: state update for entity '${utils.toPascalCase(
+              expectedStateUpdate.entityName
+            )}' has no values`
           }
         }
 
-        // ✅ validate scenario[i].expectedStateUpdates[i].value are not empty
+        // ✅ validate scenario[i].expectedStateUpdates[i].values[i].field value is not blank
         for (const expectedStateUpdate of scenario.expectedStateUpdates) {
-          if (expectedStateUpdate.values.length === 0) {
-            invalid = true
-            errorMessage += `\n- ${scenario.name}: state update '${expectedStateUpdate.entityName}' has no expected values`
+          if (expectedStateUpdate.values && expectedStateUpdate.values.length > 0) {
+            for (const [key, value] of Object.entries(expectedStateUpdate.values)) {
+              if (!value) {
+                invalid = true
+                errorMessage += `\n- ${scenario.name}: state update field '${key}' has a blank value`
+              }
+            }
           }
         }
       }
