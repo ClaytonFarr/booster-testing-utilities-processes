@@ -48,7 +48,6 @@ export const toSentenceCase = (str: string): string =>
     )
 
 export const inferValueType = (val: string | number | boolean | Record<string, unknown> | unknown[] | UUID): string => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   let type: string
   switch (val) {
     case 'string':
@@ -71,12 +70,10 @@ export const inferValueType = (val: string | number | boolean | Record<string, u
     default:
       type = typeof val
   }
-  if (typeof val === 'string' && val.match(uuidRegex)) type = 'UUID'
   return type
 }
 
 export const inferGraphQLValueType = (val: string | number | boolean | UUID): string => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   let type: string
   // if value is a string check for type keyword and convert to GraphQL equivalent
   if (typeof val === 'string')
@@ -98,8 +95,6 @@ export const inferGraphQLValueType = (val: string | number | boolean | UUID): st
       default:
         type = 'String'
     }
-  // if value is a string and matches UUID regex, convert to GraphQL ID
-  if (typeof val === 'string' && val.match(uuidRegex)) type = 'ID'
   // if value is not a string, convert value type to GraphQL equivalent
   if (typeof val !== 'string') {
     const valType = typeof val
