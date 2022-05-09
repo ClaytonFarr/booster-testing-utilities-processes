@@ -200,11 +200,14 @@ export const confirmProcessFiles = async (
       }
       // alert if any inputs required status is mismatched
       if (incorrectRequiredInputs && incorrectRequiredInputs.length > 0) {
-        invalid = true
         for (const incorrectRequiredInput of incorrectRequiredInputs) {
-          errorMessage += `\n✨ Trigger input '${incorrectRequiredInput.name}' should be ${
-            incorrectRequiredInput.expectedRequire ? 'required' : 'optional'
-          } (is ${incorrectRequiredInput.triggerRequire ? 'required' : 'optional'})`
+          if (incorrectRequiredInput.name !== 'tid') {
+            invalid = true
+            console.log('⭐️ incorrectRequiredInput', incorrectRequiredInput)
+            errorMessage += `\n✨ Trigger input '${incorrectRequiredInput.name}' should be ${
+              incorrectRequiredInput.expectedRequire ? 'required' : 'optional'
+            } (is ${incorrectRequiredInput.triggerRequire ? 'required' : 'optional'})`
+          }
         }
       }
       // LATER: possibly alert when trigger has inputs present that are not included in any scenario
