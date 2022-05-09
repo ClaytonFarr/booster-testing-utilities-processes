@@ -6,7 +6,7 @@ const orderSnack: Process = {
   name: 'Order Snack',
   trigger: {
     type: 'ActorCommand',
-    commandName: 'OrderSnack',
+    commandName: 'Order Snack',
     authorized: 'all',
   },
   scenarios: [

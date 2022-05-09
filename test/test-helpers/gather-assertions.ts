@@ -10,7 +10,7 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
   if (process.trigger.type === 'ActorCommand') {
     triggerInfo = {
       type: 'ActorCommand',
-      commandName: process.trigger.commandName,
+      commandName: util.toPascalCase(process.trigger.commandName),
       authorized: process.trigger.authorized,
     }
   } else if (process.trigger.type === 'ScheduledCommand') {
