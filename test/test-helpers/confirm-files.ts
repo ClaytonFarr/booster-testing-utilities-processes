@@ -531,12 +531,12 @@ export const confirmProcessFiles = async (
             }
           })
           // if no event handlers register an event reduced by the entity, exit this check with error
-          if (!matchingEventFound && eventHandlersMatchingEntity.length === 0) {
+          if (triggerFile && !matchingEventFound && eventHandlersMatchingEntity.length === 0) {
             invalid = true
             errorMessage += `\n🚀 Cannot find event path from trigger to entity '${entity.entityName}'`
           }
           // if there is a matching event handler, check if its initiating event matches an event registered by trigger file
-          if (!matchingEventFound && eventHandlersMatchingEntity.length > 0) {
+          if (triggerFile && !matchingEventFound && eventHandlersMatchingEntity.length > 0) {
             eventHandlersMatchingEntity.forEach((eventHandler) => {
               eventHandler.registeredEvents.forEach((registeredEventName: string) => {
                 if (triggerRegisteredEvents.includes(registeredEventName)) return
