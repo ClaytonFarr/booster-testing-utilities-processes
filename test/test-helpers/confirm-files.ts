@@ -203,7 +203,6 @@ export const confirmProcessFiles = async (
         for (const incorrectRequiredInput of incorrectRequiredInputs) {
           if (incorrectRequiredInput.name !== 'tid') {
             invalid = true
-            console.log('⭐️ incorrectRequiredInput', incorrectRequiredInput)
             errorMessage += `\n✨ Trigger input '${incorrectRequiredInput.name}' should be ${
               incorrectRequiredInput.expectedRequire ? 'required' : 'optional'
             } (is ${incorrectRequiredInput.triggerRequire ? 'required' : 'optional'})`
@@ -217,7 +216,7 @@ export const confirmProcessFiles = async (
   // ✨ Confirm triggers REGISTERS at least one event
   let triggerRegisteredEvents: string[] = []
   if (triggerFile) {
-    triggerRegisteredEvents = triggerFile.match(/new (\w+)/gm) // a little brittle, but works for now
+    triggerRegisteredEvents = triggerFile.match(/(?<!\/\/.*)new (\w+)/gm) // a little brittle, but works for now
     triggerRegisteredEvents = triggerRegisteredEvents?.filter(
       (event) => !event.toLowerCase().includes('date') && !event.toLowerCase().includes('error')
     )
