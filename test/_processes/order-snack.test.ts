@@ -1,6 +1,6 @@
 import { Process, testProcess } from '../test-helpers'
 import { UUID } from '@boostercloud/framework-types'
-const testUUID = UUID.generate()
+const testId = UUID.generate().toString()
 
 const orderSnack: Process = {
   name: 'Order Snack',
@@ -43,7 +43,7 @@ const orderSnack: Process = {
       name: 'Order candy & tattle',
       inputs: {
         fruit: 'candy',
-        tid: testUUID,
+        tid: testId,
       },
       expectedStateUpdates: [
         {
@@ -52,7 +52,7 @@ const orderSnack: Process = {
         },
         {
           entityName: 'tattle',
-          values: { id: testUUID, when: 'string', rat: 'string' },
+          values: { id: testId, when: 'string', rat: 'string' },
         },
       ],
       expectedVisibleUpdates: [
@@ -63,7 +63,7 @@ const orderSnack: Process = {
         },
         {
           readModelName: 'tattle read model',
-          values: { id: testUUID, when: 'string' },
+          values: { id: testId, when: 'string' },
           authorized: ['Mom'],
         },
       ],

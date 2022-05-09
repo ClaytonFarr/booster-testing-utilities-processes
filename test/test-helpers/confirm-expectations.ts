@@ -91,7 +91,7 @@ export const testProcessExpectations = async (
       let thisScenarioErrorMessages = `\n'${scenario.name}'\n--------------------------------------------------------------------`
 
       // ...create reference value
-      const tid = scenario.inputs?.tid ?? faker.datatype.uuid().toString()
+      const tid = (scenario.inputs?.tid as string) ?? faker.datatype.uuid().toString()
 
       // ...create specific test resources
       const scenarioInputs = { tid, ...scenario.inputs } // add tid input if not already present in scenario

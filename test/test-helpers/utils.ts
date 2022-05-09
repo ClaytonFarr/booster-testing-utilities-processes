@@ -130,6 +130,8 @@ export const valueIsTypeKeyword = (val: unknown): boolean => {
   return check
 }
 
+export const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export const convertScenarioInputsToCommandInputs = (
   scenarioInputs: Record<string, string | number | boolean | UUID>,
   inputAssertions: types.AssertionInput[]
@@ -139,7 +141,7 @@ export const convertScenarioInputsToCommandInputs = (
     const required = inputAssertions.find((assertion) => assertion.name === key)?.required ?? false
     commandInputs.push({
       name: toCamelCase(key),
-      type: key === 'tid' ? 'ID' : inferGraphQLValueType(value),
+      type: inferGraphQLValueType(value),
       validExample: value,
       required,
     })

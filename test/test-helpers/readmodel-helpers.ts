@@ -24,7 +24,6 @@ export const evaluateReadModelProjection = async (
     fieldItems.push({ fieldName: key, value })
   }
   const fieldsToReturn = [...fieldNames].join(',')
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
   // ...create filter string
   let filterString = '{ '
@@ -36,9 +35,6 @@ export const evaluateReadModelProjection = async (
     }
     if (typeof field.value === 'string' && !util.valueIsTypeKeyword(field.value) && !util.isStringJSON(field.value)) {
       filterString += `${field.fieldName}: { contains: "${field.value}" }, `
-    }
-    if (field.value.match(uuidRegex)) {
-      filterString += `${field.fieldName}: { eq: "${field.value}" }, `
     }
     if (util.valueIsTypeKeyword(field.value)) {
       filterString += `${field.fieldName}: { isDefined: true }, `

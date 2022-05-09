@@ -1,5 +1,5 @@
 import { ReadModel, Projects } from '@boostercloud/framework-core'
-import { UUID, ProjectionResult } from '@boostercloud/framework-types'
+import { ProjectionResult } from '@boostercloud/framework-types'
 import { Fruit } from '../entities/fruit'
 
 @ReadModel({
@@ -7,7 +7,7 @@ import { Fruit } from '../entities/fruit'
 })
 export class FruitReadModel {
   public constructor(
-    public id: UUID, //
+    public id: string, //
     public fruit: string,
     public orderTakenBy: string
   ) {}

@@ -1,11 +1,10 @@
 import { Entity, Reduces } from '@boostercloud/framework-core'
-import { UUID } from '@boostercloud/framework-types'
 import { FruitOrdered } from '../events/fruit-ordered'
 
 @Entity
 export class Fruit {
   public constructor(
-    public id: UUID, //
+    public id: string, //
     public fruit: string,
     public orderTakenBy: string
   ) {}

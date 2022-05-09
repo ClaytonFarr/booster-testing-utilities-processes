@@ -1,5 +1,5 @@
 import { ReadModel, Projects } from '@boostercloud/framework-core'
-import { UUID, ProjectionResult } from '@boostercloud/framework-types'
+import { ProjectionResult } from '@boostercloud/framework-types'
 import { Tattle } from '../entities/tattle'
 import { Mom } from '../roles'
 
@@ -8,7 +8,7 @@ import { Mom } from '../roles'
 })
 export class TattleReadModel {
   public constructor(
-    public id: UUID, //
+    public id: string, //
     public when: string
   ) {}
 
