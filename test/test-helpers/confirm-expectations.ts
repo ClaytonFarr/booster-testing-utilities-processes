@@ -258,7 +258,7 @@ export const testProcessExpectations = async (
 
     if (invalid && errorMessage.length > 0) {
       const errorMessageHeading = `\n\n'${process.name}' Expectations Issues\n=====================================================================`
-      errorMessage = `${errorMessageHeading}\n${errorMessage}`
+      errorMessage = `${errorMessageHeading}${errorMessage}`
     }
 
     // if any above INVALID, fail with errors
