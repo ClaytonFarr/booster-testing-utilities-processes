@@ -181,26 +181,31 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
   // ======================================================================================
   const allScenarioReadModelsData: types.AssertionReadModel[] = []
   for (const scenario of process.scenarios) {
-    for (const visibleUpdate of scenario.expectedVisibleUpdates) {
-      // ...gather read model values
-      const fields: types.AssertionValue[] = []
-      for (const [key, value] of Object.entries(visibleUpdate.values)) {
-        fields.push({
-          fieldName: util.toCamelCase(key),
-          fieldTypes: [util.inferValueType(value as string)],
-        })
-      }
-      // ...gather read model authorization
-      const readModelAuthorization = Array.isArray(visibleUpdate.authorized)
-        ? visibleUpdate.authorized.map((item) => util.toPascalCase(item))
-        : visibleUpdate.authorized
-      // ...enter read model data
-      if (!allScenarioReadModelsData.some((model) => model.readModelName === visibleUpdate.readModelName)) {
-        allScenarioReadModelsData.push({
-          readModelName: util.toPascalCase(visibleUpdate.readModelName),
-          fields,
-          authorized: typeof readModelAuthorization === 'string' ? [readModelAuthorization] : readModelAuthorization,
-        })
+    if (scenario.expectedVisibleUpdates) {
+      for (const visibleUpdate of scenario.expectedVisibleUpdates) {
+        if (visibleUpdate.values) {
+          // ...gather read model values
+          const fields: types.AssertionValue[] = []
+          for (const [key, value] of Object.entries(visibleUpdate.values)) {
+            fields.push({
+              fieldName: util.toCamelCase(key),
+              fieldTypes: [util.inferValueType(value as string)],
+            })
+          }
+          // ...gather read model authorization
+          const readModelAuthorization = Array.isArray(visibleUpdate.authorized)
+            ? visibleUpdate.authorized.map((item) => util.toPascalCase(item))
+            : visibleUpdate.authorized
+          // ...enter read model data
+          if (!allScenarioReadModelsData.some((model) => model.readModelName === visibleUpdate.readModelName)) {
+            allScenarioReadModelsData.push({
+              readModelName: util.toPascalCase(visibleUpdate.readModelName),
+              fields,
+              authorized:
+                typeof readModelAuthorization === 'string' ? [readModelAuthorization] : readModelAuthorization,
+            })
+          }
+        }
       }
     }
   }

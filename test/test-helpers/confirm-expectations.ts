@@ -179,7 +179,7 @@ export const testProcessExpectations = async (
 
       // Confirm expected VISIBLE CHANGE occurred for each read model
       // ---------------------------------------------------------------------------------------------
-      if (allStateUpdatesCorrect) {
+      if (allStateUpdatesCorrect && scenario.expectedVisibleUpdates) {
         // only check read models if all state updates performed correctly
 
         for (const visibleUpdate of scenario.expectedVisibleUpdates) {
