@@ -1,4 +1,5 @@
 import type { EventEnvelope } from '@boostercloud/framework-types'
+import type { FetchResult } from 'apollo-link'
 import { applicationUnderTest, unAuthGraphQLclient, authGraphQLclient } from './infrastructure'
 import { faker } from '@faker-js/faker'
 import * as command from './command-helpers'
@@ -103,145 +104,167 @@ export const testProcessExpectations = async (
       const commandMutation = command.createCommandMutation(commandName, acceptedInputs)
 
       // ...call command with inputs using one of accepted roles
-      await submitGraphQLclient.mutate({ variables: commandVariables, mutation: commandMutation })
+      let scenarioCommandCall: FetchResult<unknown, Record<string, unknown>, Record<string, unknown>>
+      try {
+        scenarioCommandCall = await submitGraphQLclient.mutate({
+          variables: commandVariables,
+          mutation: commandMutation,
+        })
+      } catch (error) {
+        scenarioCommandCall = error
+      }
 
-      // Confirm expected STATE CHANGE occurred for each entity
+      // If scenario should fail, confirm error message received
       // ---------------------------------------------------------------------------------------------
-      for (const stateUpdate of scenario.expectedStateUpdates) {
-        const primaryKey = `${stateUpdate.entityName}-${tid}-snapshot`
-
-        // ...wait until command has been processed
-        try {
-          await util.waitForIt(
-            () => applicationUnderTest.query.events(primaryKey),
-            (matches) => matches?.length > 0,
-            500,
-            resultWaitTime
-          )
-        } catch (error) {
-          console.log(
-            `💥 'No state update found for '${stateUpdate.entityName}' within ${resultWaitTime / 1000} seconds`
-          )
-        }
-
-        // check if any matching snapshots exist for entity
-        const matchingUpdate = (await applicationUnderTest.query.events(primaryKey))[0] as unknown as EventEnvelope
-        if (!matchingUpdate) {
-          invalid = true
-          thisScenarioErrorMessages += `\n👽 No matching state update found for entity '${stateUpdate.entityName}'\n   - Searched for key: '${primaryKey}'`
-        }
-
-        // confirm snapshot updated state as expected
-        const stateUpdateHasCorrectState: boolean[] = []
-        let stateUpdateCheckErrors = ''
-        if (matchingUpdate && stateUpdate.values) {
-          for (const [key, value] of Object.entries(stateUpdate.values)) {
-            const valueIsTestable = !util.valueIsTypeKeyword(value)
-            let expectedState: boolean
-            if (valueIsTestable) expectedState = matchingUpdate.value[key] === value
-            if (!valueIsTestable) expectedState = !!matchingUpdate.value[key] // if no testable value given confirm key is present with any value
-            stateUpdateHasCorrectState.push(expectedState)
-            // if expected state incorrect add error message
-            if (!expectedState) {
-              invalid = true
-              if (valueIsTestable)
-                stateUpdateCheckErrors += `\n   ↪ Field '${key}' value is '${matchingUpdate.value[key]}' (expected '${value}')`
-              if (!valueIsTestable)
-                stateUpdateCheckErrors += `\n   ↪ Field '${key}' is missing (with any ${value} value)`
-            }
-          }
-        }
-        if (matchingUpdate && stateUpdate.notValues) {
-          for (const [key, value] of Object.entries(stateUpdate.notValues)) {
-            const valueIsTestable = !util.valueIsTypeKeyword(value)
-            let expectedState: boolean
-            if (valueIsTestable) expectedState = matchingUpdate.value[key] !== value
-            if (!valueIsTestable) expectedState = !matchingUpdate.value[key] // if no testable value given confirm key is not present at all
-            stateUpdateHasCorrectState.push(expectedState)
-            // if expected state incorrect add error message
-            if (!expectedState) {
-              invalid = true
-              if (valueIsTestable)
-                stateUpdateCheckErrors += `\n   ↪ Field '${key}' with '${matchingUpdate.value[key]}' value found (should not be present)`
-              if (!valueIsTestable)
-                stateUpdateCheckErrors += `\n   ↪ Field '${key}' is present (should not be present with any value)`
-            }
-          }
-        }
-
-        const stateUpdatedCorrectly = !!matchingUpdate && !stateUpdateHasCorrectState.includes(false)
-        if (matchingUpdate && !stateUpdatedCorrectly) {
+      if (scenario.shouldBeRejected) {
+        if (!(scenarioCommandCall instanceof Error)) {
           thisScenarioHasErrors = true
-          thisScenarioErrorMessages += `\n👽 Entity '${util.toPascalCase(
-            stateUpdate.entityName
-          )}' was not updated as expected`
-          thisScenarioErrorMessages += stateUpdateCheckErrors
+          thisScenarioErrorMessages += '\n🔑 Command was expected to be rejected but was not'
         }
       }
 
-      const allStateUpdatesCorrect = !thisScenarioHasErrors
+      // If scenario should succeed...
+      // (this is the default behavior if 'shouldBeRejected' is not defined in scenario)
+      if (!scenario.shouldBeRejected) {
+        //
+        // Confirm expected STATE CHANGE occurred for each entity
+        // ---------------------------------------------------------------------------------------------
+        for (const stateUpdate of scenario.expectedStateUpdates) {
+          const primaryKey = `${stateUpdate.entityName}-${tid}-snapshot`
 
-      // Confirm expected VISIBLE CHANGE occurred for each read model
-      // ---------------------------------------------------------------------------------------------
-      if (allStateUpdatesCorrect && scenario.expectedVisibleUpdates) {
-        // only check read models if all state updates performed correctly
-
-        for (const visibleUpdate of scenario.expectedVisibleUpdates) {
-          // create graphql client with correct authorization
-          const readGraphQLclient = visibleUpdate.authorized.includes('all')
-            ? unAuthGraphQLclient
-            : authGraphQLclient(visibleUpdate.authorized[0])
-
-          // query readModel for expected values
-          let shouldHaveItems: Record<string, unknown>[] = []
-          if (visibleUpdate.values) {
-            shouldHaveItems = await readModel.evaluateReadModelProjection(
-              readGraphQLclient,
-              visibleUpdate.readModelName,
-              visibleUpdate.values
+          // ...wait until command has been processed
+          try {
+            await util.waitForIt(
+              () => applicationUnderTest.query.events(primaryKey),
+              (matches) => matches?.length > 0,
+              500,
+              resultWaitTime
             )
-          }
-          // query readModel for NOT values
-          let shouldNotHaveItems: Record<string, unknown>[] = []
-          if (visibleUpdate.notValues) {
-            shouldNotHaveItems = await readModel.evaluateReadModelProjection(
-              readGraphQLclient,
-              visibleUpdate.readModelName,
-              visibleUpdate.notValues
+          } catch (error) {
+            console.log(
+              `💥 'No state update found for '${stateUpdate.entityName}' within ${resultWaitTime / 1000} seconds`
             )
           }
 
-          // report any errors
-          if (shouldHaveItems.length === 0 || shouldNotHaveItems.length > 0) {
+          // check if any matching snapshots exist for entity
+          const matchingUpdate = (await applicationUnderTest.query.events(primaryKey))[0] as unknown as EventEnvelope
+          if (!matchingUpdate) {
+            invalid = true
+            thisScenarioErrorMessages += `\n👽 No matching state update found for entity '${stateUpdate.entityName}'\n   - Searched for key: '${primaryKey}'`
+          }
+
+          // confirm snapshot updated state as expected
+          const stateUpdateHasCorrectState: boolean[] = []
+          let stateUpdateCheckErrors = ''
+          if (matchingUpdate && stateUpdate.values) {
+            for (const [key, value] of Object.entries(stateUpdate.values)) {
+              const valueIsTestable = !util.valueIsTypeKeyword(value)
+              let expectedState: boolean
+              if (valueIsTestable) expectedState = matchingUpdate.value[key] === value
+              if (!valueIsTestable) expectedState = !!matchingUpdate.value[key] // if no testable value given confirm key is present with any value
+              stateUpdateHasCorrectState.push(expectedState)
+              // if expected state incorrect add error message
+              if (!expectedState) {
+                invalid = true
+                if (valueIsTestable)
+                  stateUpdateCheckErrors += `\n   ↪ Field '${key}' value is '${matchingUpdate.value[key]}' (expected '${value}')`
+                if (!valueIsTestable)
+                  stateUpdateCheckErrors += `\n   ↪ Field '${key}' is missing (with any ${value} value)`
+              }
+            }
+          }
+          if (matchingUpdate && stateUpdate.notValues) {
+            for (const [key, value] of Object.entries(stateUpdate.notValues)) {
+              const valueIsTestable = !util.valueIsTypeKeyword(value)
+              let expectedState: boolean
+              if (valueIsTestable) expectedState = matchingUpdate.value[key] !== value
+              if (!valueIsTestable) expectedState = !matchingUpdate.value[key] // if no testable value given confirm key is not present at all
+              stateUpdateHasCorrectState.push(expectedState)
+              // if expected state incorrect add error message
+              if (!expectedState) {
+                invalid = true
+                if (valueIsTestable)
+                  stateUpdateCheckErrors += `\n   ↪ Field '${key}' with '${matchingUpdate.value[key]}' value found (should not be present)`
+                if (!valueIsTestable)
+                  stateUpdateCheckErrors += `\n   ↪ Field '${key}' is present (should not be present with any value)`
+              }
+            }
+          }
+
+          const stateUpdatedCorrectly = !!matchingUpdate && !stateUpdateHasCorrectState.includes(false)
+          if (matchingUpdate && !stateUpdatedCorrectly) {
             thisScenarioHasErrors = true
-            thisScenarioErrorMessages += `\n🔭 Read model '${util.toPascalCase(
-              visibleUpdate.readModelName
-            )}' not updated as expected`
+            thisScenarioErrorMessages += `\n👽 Entity '${util.toPascalCase(
+              stateUpdate.entityName
+            )}' was not updated as expected`
+            thisScenarioErrorMessages += stateUpdateCheckErrors
           }
-          // if no items found for shouldHave
-          if (shouldHaveItems.length === 0) {
-            const valuesMessage = Object.entries(visibleUpdate.values)
-              .map(([key, value]) => {
-                const valueIsKeyword = util.valueIsTypeKeyword(value)
-                const keyLabel = valueIsKeyword ? key : `${key}:`
-                const valueLabel = valueIsKeyword ? `(${value})` : `'${value}'`
-                return `${keyLabel} ${valueLabel}`
-              })
-              .join(', ')
-            thisScenarioErrorMessages += `\n   ↪ Could not find item with ${valuesMessage}`
-          }
+        }
 
-          // if any items found for shouldNotHave
-          if (shouldNotHaveItems.length > 0) {
-            const valuesMessage = Object.entries(visibleUpdate.notValues)
-              .map(([key, value]) => {
-                const valueIsKeyword = util.valueIsTypeKeyword(value)
-                const keyLabel = valueIsKeyword ? key : `${key}:`
-                const valueLabel = valueIsKeyword ? `(${value})` : `'${value}'`
-                return `${keyLabel} ${valueLabel}`
-              })
-              .join(', ')
-            thisScenarioErrorMessages += `\n   ↪ Found item that should NOT have ${valuesMessage}`
+        const allStateUpdatesCorrect = !thisScenarioHasErrors
+
+        // Confirm expected VISIBLE CHANGE occurred for each read model
+        // ---------------------------------------------------------------------------------------------
+        if (allStateUpdatesCorrect && scenario.expectedVisibleUpdates) {
+          // only check read models if all state updates performed correctly
+
+          for (const visibleUpdate of scenario.expectedVisibleUpdates) {
+            // create graphql client with correct authorization
+            const readGraphQLclient = visibleUpdate.authorized.includes('all')
+              ? unAuthGraphQLclient
+              : authGraphQLclient(visibleUpdate.authorized[0])
+
+            // query readModel for expected values
+            let shouldHaveItems: Record<string, unknown>[] = []
+            if (visibleUpdate.values) {
+              shouldHaveItems = await readModel.evaluateReadModelProjection(
+                readGraphQLclient,
+                visibleUpdate.readModelName,
+                visibleUpdate.values
+              )
+            }
+            // query readModel for NOT values
+            let shouldNotHaveItems: Record<string, unknown>[] = []
+            if (visibleUpdate.notValues) {
+              shouldNotHaveItems = await readModel.evaluateReadModelProjection(
+                readGraphQLclient,
+                visibleUpdate.readModelName,
+                visibleUpdate.notValues
+              )
+            }
+
+            // report any errors
+            if (shouldHaveItems.length === 0 || shouldNotHaveItems.length > 0) {
+              thisScenarioHasErrors = true
+              thisScenarioErrorMessages += `\n🔭 Read model '${util.toPascalCase(
+                visibleUpdate.readModelName
+              )}' not updated as expected`
+            }
+            // if no items found for shouldHave
+            if (shouldHaveItems.length === 0) {
+              const valuesMessage = Object.entries(visibleUpdate.values)
+                .map(([key, value]) => {
+                  const valueIsKeyword = util.valueIsTypeKeyword(value)
+                  const keyLabel = valueIsKeyword ? key : `${key}:`
+                  const valueLabel = valueIsKeyword ? `(${value})` : `'${value}'`
+                  return `${keyLabel} ${valueLabel}`
+                })
+                .join(', ')
+              thisScenarioErrorMessages += `\n   ↪ Could not find item with ${valuesMessage}`
+            }
+
+            // if any items found for shouldNotHave
+            if (shouldNotHaveItems.length > 0) {
+              const valuesMessage = Object.entries(visibleUpdate.notValues)
+                .map(([key, value]) => {
+                  const valueIsKeyword = util.valueIsTypeKeyword(value)
+                  const keyLabel = valueIsKeyword ? key : `${key}:`
+                  const valueLabel = valueIsKeyword ? `(${value})` : `'${value}'`
+                  return `${keyLabel} ${valueLabel}`
+                })
+                .join(', ')
+              thisScenarioErrorMessages += `\n   ↪ Found item that should NOT have ${valuesMessage}`
+            }
           }
         }
       }
