@@ -3,10 +3,13 @@
 NOTE
 
 - testing will check if GraphQL can be connected to
+  - need to start local server before running tests (even for input validation and file checks)
 - new Booster projects must have following for GraphQL server to connectable
   - event
   - entity that reduces event
-
+- when adding new files, for GraphQL server to run -
+  - commands / read models must have some auth defined
+  - roles files must have some content
 
 > ### ⭐️ Heads Up ⭐️
 >
@@ -153,7 +156,6 @@ There are a few things tests currently need or can use in Command source files:
   - [example](https://github.com/ClaytonFarr/booster-testing-utilities/blob/master/src/commands/order-snack.ts#L14)
 - optional @syntax comments that can inform [testing automation](https://github.com/ClaytonFarr/booster-testing-utilities#testing-automation)
 
-
 ### Testing Tools
 
 - This repo uses [Vitest](https://vitest.dev/) to run tests - but that is not required.
@@ -181,13 +183,17 @@ I'm operating on a few assumptions at the moment:
 
 1. the Booster framework appears to have good unit/integration testing coverage of its core functionality
 2. if we can rely on these to ensure the framework is working as intended (e.g. commands processing
-  successfully, events reducing into entities, entities projecting into read models, etc.) than the
-  job at hand for us is to test:
-  - the intended behavior of the application and its processes
-  - the code hygiene of the application's parts (i.e. are we following a desired practice like input validation?)
+   successfully, events reducing into entities, entities projecting into read models, etc.) than the
+   job at hand for us is to test:
+
+- the intended behavior of the application and its processes
+- the code hygiene of the application's parts (i.e. are we following a desired practice like input validation?)
+
 3. we can test intended behavior/processes via e2e/functional tests
-  - if e2e/functional tests can be created more quickly and reliably, we may not need to create
-    (as many) unit tests to confirm the functionality of the individual parts
+
+- if e2e/functional tests can be created more quickly and reliably, we may not need to create
+  (as many) unit tests to confirm the functionality of the individual parts
+
 4. we can test code hygiene via pseudo-unit tests
 
 Again, this is definitely an area I'm operating on some shallow knowledge and big assumptions,

@@ -12,8 +12,8 @@ export const evaluateReadModelProjection = async (
   graphQLclient: ApolloClient<NormalizedCacheObject>,
   readModelName: string,
   fields: Record<string, string | number | boolean | UUID>,
-  sortBy?: Record<string, unknown>,
-  limitResultsTo?: number
+  limitResultsTo?: number,
+  sortBy?: Record<string, unknown>
 ): Promise<Record<string, unknown>[]> => {
   // ...grab necessary fields to check
   const readModel = util.toPascalCase(readModelName)

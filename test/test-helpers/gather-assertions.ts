@@ -74,7 +74,7 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
     all: allRoles.sort(),
   }
 
-  // 🎯 Gather INPUTS
+  // ✨ Gather INPUTS
   // ======================================================================================
   const inputsKeys = []
   const allScenarioInputsData = []
@@ -108,7 +108,7 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
     if (inputsKeysCommon.includes(input.name)) input.required = true
   }
 
-  // 🪐 Gather ENTITIES data across all scenarios
+  // 👽 Gather ENTITIES data across all scenarios
   // ======================================================================================
   const allScenarioEntitiesData: types.AssertionEntity[] = []
   for (const scenario of process.scenarios) {

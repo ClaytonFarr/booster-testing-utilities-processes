@@ -8,14 +8,14 @@ import { describe, it, expect } from 'vitest'
 // ======================================================================================
 
 export const testProcess = (process: Process): void => {
-  describe(process.name, async () => {
+  describe(`Process: '${process.name}'`, async () => {
     let testMessage = ''
 
     // 1. Validate process inputs
     const validInputCheck = validateProcessAssertions(process)
     const validInputPass = validInputCheck === true ? true : false
     if (typeof validInputCheck === 'string') testMessage = validInputCheck
-    it('should have valid assertions for scenario(s)', async () => {
+    it('Should have valid assertions for scenario(s)', async () => {
       expect(validInputPass).toBe(true)
     })
 
@@ -32,14 +32,21 @@ export const testProcess = (process: Process): void => {
       filesPresentCheck = await confirmProcessFiles(process, processAssertions)
       filesPresentPass = filesPresentCheck === true ? true : false
       if (typeof filesPresentCheck === 'string') testMessage += filesPresentCheck
-      it('should have all files for scenario(s)', async () => {
+      it('Should have all files for scenario(s)', async () => {
         expect(filesPresentPass).toBe(true)
       })
     }
 
     // 4. Test if process expectations are met by application
+    let expectationsCheck: string | boolean
+    let expectationsPass: boolean
     if (validInputCheck === true && filesPresentCheck === true) {
-      void testProcessExpectations(process, processAssertions)
+      expectationsCheck = await testProcessExpectations(process, processAssertions)
+      expectationsPass = expectationsCheck === true ? true : false
+      if (typeof expectationsCheck === 'string') testMessage += expectationsCheck
+      it('Should meet all scenario expectations', async () => {
+        expect(expectationsPass).toBe(true)
+      })
     }
 
     console.log(testMessage)

@@ -10,12 +10,12 @@ import { CandyOrdered } from '../events/candy-ordered'
 export class OrderSnack {
   public constructor(
     readonly fruit: string,
-    readonly drink?: string, // @validExample: 'water'
+    readonly drink?: string,
     readonly tid?: UUID // input used by test utilities
   ) {}
 
   public static async handle(command: OrderSnack, register: Register): Promise<void> {
-    // check inputs
+    // validate inputs
     if (!command.fruit || command.fruit === '') throw new Error('A fruit is required.')
     if (command.drink === '') throw new Error('If you want a drink, please tell us which type.')
     if (command.drink && command.drink !== 'water') throw new Error('How about some water instead?')

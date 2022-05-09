@@ -62,22 +62,22 @@ export const confirmProcessFiles = async (
     }
   }
 
-  // 🎯🎯🎯 TRIGGER 🎯🎯🎯
+  // ✨✨✨ TRIGGER ✨✨✨
   // ======================================================================================
 
-  // 🎯 Confirm TRIGGER FILE exists
+  // ✨ Confirm TRIGGER FILE exists
   const triggerFileDirectory =
     process.trigger.type === 'ActorCommand' ? path.commandsDirectoryPath : path.scheduledCommandsDirectoryPath
   const triggerFileName = util.toKebabCase(process.trigger.commandName)
   const triggerFileExists = fs.existsSync(`${triggerFileDirectory}/${triggerFileName}.ts`)
   if (!triggerFileExists) {
     invalid = true
-    errorMessage += `\n🎯 Trigger file missing: '${triggerFileDirectory}/${triggerFileName}.ts'`
+    errorMessage += `\n✨ Trigger file missing: '${triggerFileDirectory}/${triggerFileName}.ts'`
   }
   let triggerFile: string
   if (triggerFileExists) triggerFile = fs.readFileSync(`${triggerFileDirectory}/${triggerFileName}.ts`, 'utf8')
 
-  // 🎯 Confirm trigger has correct AUTHORIZATION
+  // ✨ Confirm trigger has correct AUTHORIZATION
   if (triggerFile && process.trigger.type === 'ActorCommand') {
     // evaluate trigger file for asserted roles
     let triggerAuthorizationString = triggerFile.match(/authorize: (.*)/g)[0].replace(/authorize: /g, '')
@@ -97,16 +97,16 @@ export const confirmProcessFiles = async (
     // alert if trigger missing any authorization definition
     if (!triggerHasAuthorization) {
       invalid = true
-      errorMessage += `\n🎯 Trigger does not have authorization defined (expecting ${expectedWriteRoles})`
+      errorMessage += `\n✨ Trigger does not have authorization defined (expecting ${expectedWriteRoles})`
     }
     // alert if trigger missing correct authorization definition
     if (triggerHasAuthorization && !triggerHasCorrectAuthorization) {
       invalid = true
-      errorMessage += `\n🎯 Trigger does not have correct authorization (expecting ${expectedWriteRoles})`
+      errorMessage += `\n✨ Trigger does not have correct authorization (expecting ${expectedWriteRoles})`
     }
   }
 
-  // 🎯 Confirm that trigger INPUTS and INPUT TYPES match scenarios
+  // ✨ Confirm that trigger INPUTS and INPUT TYPES match scenarios
   const scenarioInputs = assertions.allInputs
   const triggerInputs = []
   if (triggerFile) {
@@ -130,7 +130,7 @@ export const confirmProcessFiles = async (
       }
       expectedInputNames = [...new Set(expectedInputNames)].sort()
       invalid = true
-      errorMessage += `\n🎯 Trigger does not have any inputs defined (expecting ${expectedInputNames})`
+      errorMessage += `\n✨ Trigger does not have any inputs defined (expecting ${expectedInputNames.join(', ')})`
     }
 
     if (triggerInputs && triggerInputs.length > 0) {
@@ -186,14 +186,14 @@ export const confirmProcessFiles = async (
       if (missingInputs && missingInputs.length > 0) {
         invalid = true
         for (const missingInput of missingInputs) {
-          errorMessage += `\n🎯 Trigger is missing input: ${missingInput.name} (${missingInput.type.join('|')})`
+          errorMessage += `\n✨ Trigger is missing input: ${missingInput.name} (${missingInput.type.join('|')})`
         }
       }
       // alert if any inputs are mismatched
       if (incorrectTypeInputs && incorrectTypeInputs.length > 0) {
         invalid = true
         for (const incorrectTypeInput of incorrectTypeInputs) {
-          errorMessage += `\n🎯 Trigger missing type${incorrectTypeInput.type.length > 1 ? 's' : ''} for ${
+          errorMessage += `\n✨ Trigger missing type${incorrectTypeInput.type.length > 1 ? 's' : ''} for ${
             incorrectTypeInput.name
           } (missing ${incorrectTypeInput.type.join('|')})`
         }
@@ -202,7 +202,7 @@ export const confirmProcessFiles = async (
       if (incorrectRequiredInputs && incorrectRequiredInputs.length > 0) {
         invalid = true
         for (const incorrectRequiredInput of incorrectRequiredInputs) {
-          errorMessage += `\n🎯 Trigger input '${incorrectRequiredInput.name}' should be ${
+          errorMessage += `\n✨ Trigger input '${incorrectRequiredInput.name}' should be ${
             incorrectRequiredInput.expectedRequire ? 'required' : 'optional'
           } (is ${incorrectRequiredInput.triggerRequire ? 'required' : 'optional'})`
         }
@@ -211,27 +211,27 @@ export const confirmProcessFiles = async (
     }
   }
 
-  // 🎯 Confirm triggers REGISTERS at least one event
-  let triggerRegisteredEvents: string[]
+  // ✨ Confirm triggers REGISTERS at least one event
+  let triggerRegisteredEvents: string[] = []
   if (triggerFile) {
     triggerRegisteredEvents = triggerFile.match(/new (\w+)/gm) // a little brittle, but works for now
-    triggerRegisteredEvents = triggerRegisteredEvents.filter(
+    triggerRegisteredEvents = triggerRegisteredEvents?.filter(
       (event) => !event.toLowerCase().includes('date') && !event.toLowerCase().includes('error')
     )
     if (!triggerRegisteredEvents || triggerRegisteredEvents.length === 0) {
       invalid = true
-      errorMessage += '\n🎯 Trigger does not register any events'
+      errorMessage += '\n✨ Trigger does not register any events'
     }
     if (triggerRegisteredEvents) {
       triggerRegisteredEvents = triggerRegisteredEvents.map((event) => event.replace(/new/g, '').trim())
     }
   }
 
-  // 🪐🪐🪐 ENTITIES 🪐🪐🪐
+  // 👽👽👽 ENTITIES 👽👽👽
   // ======================================================================================
   const scenarioEntities = assertions.allEntities
 
-  // 🪐 Confirm ENTITY FILES exist for all scenario[i].expectedStateUpdates[i].entityName values
+  // 👽 Confirm ENTITY FILES exist for all scenario[i].expectedStateUpdates[i].entityName values
   const missingEntities = []
   for (const entity of scenarioEntities) {
     const entityFileName = util.toKebabCase(entity.entityName)
@@ -241,11 +241,11 @@ export const confirmProcessFiles = async (
     invalid = true
     const MissingEntitiesUnique = [...new Set(missingEntities)]
     for (const missingEntity of MissingEntitiesUnique) {
-      errorMessage += `\n🪐 Entity file missing: '${path.entitiesDirectoryPath}/${missingEntity}.ts'`
+      errorMessage += `\n👽 Entity file missing: '${path.entitiesDirectoryPath}/${missingEntity}.ts'`
     }
   }
 
-  // 🪐 Confirm each ENTITY file contains constructor FIELDS for all scenario[i].expectedStateUpdates[i].values fieldName values
+  // 👽 Confirm each ENTITY file contains constructor FIELDS for all scenario[i].expectedStateUpdates[i].values fieldName values
   for (const entity of scenarioEntities) {
     const entityFileName = util.toKebabCase(entity.entityName)
     const entityFilePath = `${path.entitiesDirectoryPath}/${entityFileName}.ts`
@@ -260,7 +260,7 @@ export const confirmProcessFiles = async (
       if (missingFields && missingFields.length > 0) {
         invalid = true
         missingFields.forEach((missingField) => {
-          errorMessage += `\n🪐 Entity '${util.toPascalCase(
+          errorMessage += `\n👽 Entity '${util.toPascalCase(
             entity.entityName
           )}' does not have field: ${util.toCamelCase(missingField)} (${
             entityFields.find((field) => field.fieldName === missingField).fieldTypes
@@ -270,7 +270,7 @@ export const confirmProcessFiles = async (
     }
   }
 
-  // 🪐 Confirm each ENTITY constructor FIELD TYPE matches the type inferred from scenario[i].expectedStateUpdates[i].values[i].value
+  // 👽 Confirm each ENTITY constructor FIELD TYPE matches the type inferred from scenario[i].expectedStateUpdates[i].values[i].value
   for (const entity of scenarioEntities) {
     // infer field types from assertions
     const assertedEntityFields: AssertionValue[] = entity.fields.map((item) => {
@@ -298,7 +298,7 @@ export const confirmProcessFiles = async (
         )
         if (mismatchedFieldTypes) {
           invalid = true
-          errorMessage += `\n🪐 Entity '${entity.entityName}' field '${entityFieldName}' missing types (expecting ${
+          errorMessage += `\n👽 Entity '${entity.entityName}' field '${entityFieldName}' missing types (expecting ${
             assertedEntityFields.find((item) => item.fieldName === entityFieldName).fieldTypes
           })`
         }
@@ -485,7 +485,7 @@ export const confirmProcessFiles = async (
       const eventsReduced = entityFile.match(/@Reduces\((\w+)/gs)
       if (!eventsReduced) {
         invalid = true
-        errorMessage += `\n🪐 Entity '${util.toPascalCase(entity.entityName)}' does not reduce any events`
+        errorMessage += `\n👽 Entity '${util.toPascalCase(entity.entityName)}' does not reduce any events`
       }
       if (eventsReduced) {
         eventsReduced.forEach((eventReduced) => {
@@ -496,7 +496,7 @@ export const confirmProcessFiles = async (
         let matchingEventFound = false
         if (entityReducedEvents.length > 0) {
           entityReducedEvents.forEach((eventName) => {
-            if (triggerRegisteredEvents.includes(eventName)) matchingEventFound = true
+            if (triggerRegisteredEvents?.includes(eventName)) matchingEventFound = true
           })
           // if there are no directly overlapping events, investigate if any event handlers register an entity reduced event
           const eventHandlersMatchingEntity = []

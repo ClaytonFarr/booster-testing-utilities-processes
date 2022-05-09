@@ -5,20 +5,19 @@ import * as command from './command-helpers'
 import * as readModel from './readmodel-helpers'
 import * as type from './types'
 import * as util from './utils'
-import * as vit from 'vitest'
 
 // ======================================================================================
 
 export const testProcessExpectations = async (
   process: type.Process,
   assertions: type.Assertions,
-  describe = vit.describe,
-  it = vit.it,
-  expect = vit.expect,
   resultWaitTime = 5000
-): Promise<string | void> => {
+): Promise<string | boolean> => {
+  let invalid = false
+  let errorMessage = ''
+
   // Confirm assertions data present
-  // -----------------------------------------------------------------------------------------------
+  // ===============================================================================================
   const expectedAssertionGroups = ['roles', 'allInputs', 'allEntities']
   if (
     Object.keys(assertions).length === 0 ||
@@ -27,7 +26,7 @@ export const testProcessExpectations = async (
     return `\n\n'${process.name}' Test Expectations Issue\n=====================================================================\nAssertions data missing or incomplete`
 
   // Gather Assertions
-  // -----------------------------------------------------------------------------------------------
+  // ===============================================================================================
   const scenarios = assertions.scenarios
   const authorizedSubmitRoles = assertions.roles.write
   const commandName = assertions.trigger.commandName
@@ -39,7 +38,7 @@ export const testProcessExpectations = async (
   }, {})
 
   // Create common test resources
-  // -----------------------------------------------------------------------------------------------
+  // ===============================================================================================
   const submitGraphQLclient = authorizedSubmitRoles.includes('all')
     ? unAuthGraphQLclient
     : authGraphQLclient(authorizedSubmitRoles[0])
@@ -48,142 +47,224 @@ export const testProcessExpectations = async (
   const defaultVariables = command.createAllVariables(defaultTestInputs)
   const defaultVariablesEmpty = command.createEmptyVariables(defaultTestInputs)
 
-  describe(`Process: ${process.name}`, async () => {
-    // If Actor Command, confirm scenarios' expectations, roles, and input validation
-    if (isActorCommand) {
-      //
-      // Call command for each scenario and evaluate results
-      for (const scenario of scenarios) {
-        describe(`Scenario: ${scenario.name}`, async () => {
-          //
-          // ...create reference value
-          const tid = scenario.inputs?.tid ?? faker.datatype.uuid().toString()
+  // If Actor Command, confirm scenarios' expectations, roles, and input validation
+  // ===============================================================================================
 
-          // ...create specific test resources
-          const scenarioInputs = { tid, ...scenario.inputs } // add tid input if not already present in scenario
-          const acceptedInputs: type.CommandInput[] = util.convertScenarioInputsToCommandInputs(
-            scenarioInputs,
-            inputAssertions
-          )
-          const commandVariables = command.createAllVariables(acceptedInputs)
-          const commandMutation = command.createCommandMutation(commandName, acceptedInputs)
-
-          // ...call command with inputs using one of accepted roles
-          await submitGraphQLclient.mutate({ variables: commandVariables, mutation: commandMutation })
-
-          // Confirm expected state changes occurred for each entity
-          for (const stateUpdate of scenario.expectedStateUpdates) {
-            it(`should update entity '${stateUpdate.entityName}' correctly`, async () => {
-              const primaryKey = `${stateUpdate.entityName}-${tid}-snapshot`
-
-              // ...wait until command has been processed
-              try {
-                await util.waitForIt(
-                  () => applicationUnderTest.query.events(primaryKey),
-                  (matches) => matches?.length > 0,
-                  500,
-                  resultWaitTime
-                )
-              } catch (error) {
-                console.log(
-                  `💥 'did not update state for '${stateUpdate.entityName}' within ${resultWaitTime / 1000} seconds`
-                )
-              }
-
-              // check if any matching snapshots exist for entity
-              const matchingUpdate = (
-                await applicationUnderTest.query.events(primaryKey)
-              )[0] as unknown as EventEnvelope
-
-              // confirm snapshot updated state as expected
-              const updateHasCorrectState: boolean[] = []
-              if (stateUpdate.values) {
-                for (const [key, value] of Object.entries(stateUpdate.values)) {
-                  let correctState: boolean
-                  const isTestableValue = !util.valueIsTypeKeyword(value)
-                  if (isTestableValue) correctState = matchingUpdate?.value[key] === value
-                  if (!isTestableValue) correctState = !!matchingUpdate?.value[key] // if no testable value given confirm key is present with any value
-                  updateHasCorrectState.push(correctState)
-                }
-              }
-              if (stateUpdate.notValues) {
-                for (const [key, value] of Object.entries(stateUpdate.notValues)) {
-                  let correctState: boolean
-                  const isTestableValue = !util.valueIsTypeKeyword(value)
-                  if (isTestableValue) correctState = matchingUpdate?.value[key] !== value
-                  if (!isTestableValue) correctState = !matchingUpdate?.value[key] // if no testable value given confirm key is not present at all
-                  updateHasCorrectState.push(correctState)
-                }
-              }
-              const stateUpdatedCorrectly = !!matchingUpdate && !updateHasCorrectState.includes(false)
-              expect(stateUpdatedCorrectly).toBe(true)
-            })
-          }
-
-          for (const visibleUpdate of scenario.expectedVisibleUpdates) {
-            // create graphql client with correct authorization
-            const readGraphQLclient = visibleUpdate.authorized.includes('all')
-              ? unAuthGraphQLclient
-              : authGraphQLclient(visibleUpdate.authorized[0])
-
-            it(`should update read model '${visibleUpdate.readModelName}' correctly`, async () => {
-              // try to query readModel for expected values
-              let shouldHaveItems: Record<string, unknown>[] = []
-              if (visibleUpdate.values) {
-                shouldHaveItems = await readModel.evaluateReadModelProjection(
-                  readGraphQLclient,
-                  visibleUpdate.readModelName,
-                  visibleUpdate.values
-                )
-              }
-              // try to query readModel for NOT values
-              let shouldNotHaveItems: Record<string, unknown>[] = []
-              if (visibleUpdate.notValues) {
-                shouldNotHaveItems = await readModel.evaluateReadModelProjection(
-                  readGraphQLclient,
-                  visibleUpdate.readModelName,
-                  visibleUpdate.notValues
-                )
-              }
-              // evaluate results
-              const expectedQueryResult = shouldHaveItems.length > 0 && shouldNotHaveItems.length === 0
-              expect(expectedQueryResult).toBe(true)
-            })
-          }
-        })
-      }
-
-      // Confirm command can be executed with additional roles, if specified
-      if (!authorizedSubmitRoles.includes('all') && authorizedSubmitRoles.length > 2) {
-        authorizedSubmitRoles.shift() // skip first role since already tested above if present
-        authorizedSubmitRoles.forEach(async (role) => {
-          it(`'${process.trigger.commandName}' command should allow '${role}' role to make request`, async () => {
-            const check = await command.wasAuthorizedRequestAllowed(role, defaultMutation, defaultVariables)
-            expect(check).toBe(true)
-          })
-        })
-      }
-
-      // Confirm command will throw errors if input values are empty
-      it(`'${process.trigger.commandName}' command should throw error when inputs are passed with empty values`, async () => {
-        // submit command
-        try {
-          await submitGraphQLclient.mutate({
-            variables: defaultVariablesEmpty,
-            mutation: defaultMutation,
-          })
-        } catch (error) {
-          // evaluate command response
-          expect(error).not.toBeNull()
-          expect(error?.message).toBeTruthy()
-        }
+  if (isActorCommand) {
+    //
+    // Confirm command will THROW ERROR if INPUTS VALUES EMPTY
+    // ---------------------------------------------------------------------------------------------
+    let commandThrowsError: boolean
+    try {
+      await submitGraphQLclient.mutate({
+        variables: defaultVariablesEmpty,
+        mutation: defaultMutation,
       })
-
-      // LATER: Confirm Command can receive same input data without creating incorrect state
-
-      // LATER: Confirm any Event Handlers can receive same event data without creating incorrect state
+    } catch (error) {
+      commandThrowsError = !!error
+    }
+    if (!commandThrowsError) {
+      invalid = true
+      errorMessage += '\n✨ Command does not throw error when input values are empty'
     }
 
-    // LATER: Confirm Scheduled Command performs on expected schedule
-  })
+    // Confirm command CAN BE CALLED with ALL ROLES (if additional roles specified)
+    // ---------------------------------------------------------------------------------------------
+    if (!authorizedSubmitRoles.includes('all') && authorizedSubmitRoles.length > 2) {
+      authorizedSubmitRoles.shift() // skip first role since already tested above if present
+      authorizedSubmitRoles.forEach(async (role) => {
+        const check = await command.wasAuthorizedRequestAllowed(role, defaultMutation, defaultVariables)
+        if (!check) {
+          invalid = true
+          errorMessage += `\n🔑 Role '${role}' was not authorized to execute command as expected`
+        }
+      })
+    }
+
+    // Confirm expected EXPECTED CHANGES
+    // ---------------------------------------------------------------------------------------------
+
+    // call command for each scenario
+    const scenarioErrorMessages: string[] = []
+    for (const scenario of scenarios) {
+      let thisScenarioHasErrors: boolean
+      let thisScenarioErrorMessages = `\n'${scenario.name}'\n--------------------------------------------------------------------`
+
+      // ...create reference value
+      const tid = scenario.inputs?.tid ?? faker.datatype.uuid().toString()
+
+      // ...create specific test resources
+      const scenarioInputs = { tid, ...scenario.inputs } // add tid input if not already present in scenario
+      const acceptedInputs: type.CommandInput[] = util.convertScenarioInputsToCommandInputs(
+        scenarioInputs,
+        inputAssertions
+      )
+      const commandVariables = command.createAllVariables(acceptedInputs)
+      const commandMutation = command.createCommandMutation(commandName, acceptedInputs)
+
+      // ...call command with inputs using one of accepted roles
+      await submitGraphQLclient.mutate({ variables: commandVariables, mutation: commandMutation })
+
+      // Confirm expected STATE CHANGE occurred for each entity
+      // ---------------------------------------------------------------------------------------------
+      for (const stateUpdate of scenario.expectedStateUpdates) {
+        const primaryKey = `${stateUpdate.entityName}-${tid}-snapshot`
+
+        // ...wait until command has been processed
+        try {
+          await util.waitForIt(
+            () => applicationUnderTest.query.events(primaryKey),
+            (matches) => matches?.length > 0,
+            500,
+            resultWaitTime
+          )
+        } catch (error) {
+          console.log(
+            `💥 'Did not update state for '${stateUpdate.entityName}' within ${resultWaitTime / 1000} seconds`
+          )
+        }
+
+        // check if any matching snapshots exist for entity
+        const matchingUpdate = (await applicationUnderTest.query.events(primaryKey))[0] as unknown as EventEnvelope
+
+        // confirm snapshot updated state as expected
+        const stateUpdateHasCorrectState: boolean[] = []
+        let stateUpdateCheckErrors = ''
+        if (matchingUpdate && stateUpdate.values) {
+          for (const [key, value] of Object.entries(stateUpdate.values)) {
+            const valueIsTestable = !util.valueIsTypeKeyword(value)
+            let expectedState: boolean
+            if (valueIsTestable) expectedState = matchingUpdate.value[key] === value
+            if (!valueIsTestable) expectedState = !!matchingUpdate.value[key] // if no testable value given confirm key is present with any value
+            stateUpdateHasCorrectState.push(expectedState)
+            // if expected state incorrect add error message
+            if (!expectedState) {
+              invalid = true
+              if (valueIsTestable)
+                stateUpdateCheckErrors += `\n   ↪ Field '${key}' value is '${matchingUpdate.value[key]}' (expected '${value}')`
+              if (!valueIsTestable)
+                stateUpdateCheckErrors += `\n   ↪ Field '${key}' is missing (with any ${value} value)`
+            }
+          }
+        }
+        if (matchingUpdate && stateUpdate.notValues) {
+          for (const [key, value] of Object.entries(stateUpdate.notValues)) {
+            const valueIsTestable = !util.valueIsTypeKeyword(value)
+            let expectedState: boolean
+            if (valueIsTestable) expectedState = matchingUpdate.value[key] !== value
+            if (!valueIsTestable) expectedState = !matchingUpdate.value[key] // if no testable value given confirm key is not present at all
+            stateUpdateHasCorrectState.push(expectedState)
+            // if expected state incorrect add error message
+            if (!expectedState) {
+              invalid = true
+              if (valueIsTestable)
+                stateUpdateCheckErrors += `\n   ↪ Field '${key}' with '${matchingUpdate.value[key]}' value found (should not be present)`
+              if (!valueIsTestable)
+                stateUpdateCheckErrors += `\n   ↪ Field '${key}' is present (should not be present with any value)`
+            }
+          }
+        }
+
+        const stateUpdatedCorrectly = !!matchingUpdate && !stateUpdateHasCorrectState.includes(false)
+        if (!stateUpdatedCorrectly) {
+          thisScenarioHasErrors = true
+          thisScenarioErrorMessages += `\n👽 Entity '${util.toPascalCase(
+            stateUpdate.entityName
+          )}' was not updated as expected`
+          thisScenarioErrorMessages += stateUpdateCheckErrors
+        }
+      }
+
+      const allStateUpdatesCorrect = !thisScenarioHasErrors
+
+      // Confirm expected VISIBLE CHANGE occurred for each read model
+      // ---------------------------------------------------------------------------------------------
+      if (allStateUpdatesCorrect) {
+        // only check read models if all state updates performed correctly
+
+        for (const visibleUpdate of scenario.expectedVisibleUpdates) {
+          // create graphql client with correct authorization
+          const readGraphQLclient = visibleUpdate.authorized.includes('all')
+            ? unAuthGraphQLclient
+            : authGraphQLclient(visibleUpdate.authorized[0])
+
+          // query readModel for expected values
+          let shouldHaveItems: Record<string, unknown>[] = []
+          if (visibleUpdate.values) {
+            shouldHaveItems = await readModel.evaluateReadModelProjection(
+              readGraphQLclient,
+              visibleUpdate.readModelName,
+              visibleUpdate.values
+            )
+          }
+          // query readModel for NOT values
+          let shouldNotHaveItems: Record<string, unknown>[] = []
+          if (visibleUpdate.notValues) {
+            shouldNotHaveItems = await readModel.evaluateReadModelProjection(
+              readGraphQLclient,
+              visibleUpdate.readModelName,
+              visibleUpdate.notValues
+            )
+          }
+
+          // report any errors
+          if (shouldHaveItems.length === 0 || shouldNotHaveItems.length > 0) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n🔭 Read model '${util.toPascalCase(
+              visibleUpdate.readModelName
+            )}' not updated as expected`
+          }
+          // if no items found for shouldHave
+          if (shouldHaveItems.length === 0) {
+            const valuesMessage = Object.entries(visibleUpdate.values)
+              .map(([key, value]) => {
+                const valueIsKeyword = util.valueIsTypeKeyword(value)
+                const keyLabel = valueIsKeyword ? key : `${key}:`
+                const valueLabel = valueIsKeyword ? `(${value})` : `'${value}'`
+                return `${keyLabel} ${valueLabel}`
+              })
+              .join(', ')
+            thisScenarioErrorMessages += `\n   ↪ Could not find item with ${valuesMessage}`
+          }
+
+          // if any items found for shouldNotHave
+          if (shouldNotHaveItems.length > 0) {
+            const valuesMessage = Object.entries(visibleUpdate.notValues)
+              .map(([key, value]) => {
+                const valueIsKeyword = util.valueIsTypeKeyword(value)
+                const keyLabel = valueIsKeyword ? key : `${key}:`
+                const valueLabel = valueIsKeyword ? `(${value})` : `'${value}'`
+                return `${keyLabel} ${valueLabel}`
+              })
+              .join(', ')
+            thisScenarioErrorMessages += `\n   ↪ Found item that should NOT have ${valuesMessage}`
+          }
+        }
+      }
+
+      if (thisScenarioHasErrors) {
+        invalid = true
+        scenarioErrorMessages.push(thisScenarioErrorMessages)
+      }
+    }
+
+    if (scenarioErrorMessages.length > 0) {
+      errorMessage += `\n${scenarioErrorMessages.join('\n')}`
+    }
+
+    if (invalid && errorMessage.length > 0) {
+      const errorMessageHeading = `\n\n'${process.name}' Expectations Issues\n=====================================================================`
+      errorMessage = `${errorMessageHeading}\n${errorMessage}`
+    }
+
+    // if any above INVALID, fail with errors
+    if (invalid) return errorMessage
+
+    // if all VALID
+    return true
+
+    // LATER: Confirm Command can receive same input data without creating incorrect state
+    // LATER: Confirm any Event Handlers can receive same event data without creating incorrect state
+  }
+  // LATER: Confirm Scheduled Command performs on expected schedule
 }
