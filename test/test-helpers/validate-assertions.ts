@@ -58,7 +58,7 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
       }
 
       // ✅ validate scenario state update(s) are present
-      if (scenario.expectedStateUpdates.length === 0) {
+      if (!scenario.shouldBeRejected && scenario.expectedStateUpdates.length === 0) {
         thisScenarioHasErrors = true
         thisScenarioErrorMessages += '\n- Scenario has no expected state update(s)'
       }
