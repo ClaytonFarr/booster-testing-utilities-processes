@@ -113,20 +113,22 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
   const allScenarioEntitiesData: types.AssertionEntity[] = []
   for (const scenario of process.scenarios) {
     for (const stateUpdate of scenario.expectedStateUpdates) {
-      // ...gather entity values
-      const fields: types.AssertionValue[] = []
-      for (const [key, value] of Object.entries(stateUpdate.values)) {
-        fields.push({
-          fieldName: util.toCamelCase(key),
-          fieldTypes: [util.inferValueType(value as string)],
-        })
-      }
-      // ...enter entity and values
-      if (!allScenarioEntitiesData.some((item) => item.entityName === stateUpdate.entityName)) {
-        allScenarioEntitiesData.push({
-          entityName: util.toPascalCase(stateUpdate.entityName),
-          fields,
-        })
+      if (stateUpdate.values) {
+        // ...gather entity values
+        const fields: types.AssertionValue[] = []
+        for (const [key, value] of Object.entries(stateUpdate.values)) {
+          fields.push({
+            fieldName: util.toCamelCase(key),
+            fieldTypes: [util.inferValueType(value as string)],
+          })
+        }
+        // ...enter entity and values
+        if (!allScenarioEntitiesData.some((item) => item.entityName === stateUpdate.entityName)) {
+          allScenarioEntitiesData.push({
+            entityName: util.toPascalCase(stateUpdate.entityName),
+            fields,
+          })
+        }
       }
     }
   }

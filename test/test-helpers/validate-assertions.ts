@@ -37,54 +37,80 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
   }
   if (process.scenarios.every((scenario) => scenario.name)) allScenariosAreNamed = true
 
+  const scenarioErrorMessages: string[] = []
   if (allScenariosAreNamed) {
     for (const scenario of process.scenarios) {
+      let thisScenarioHasErrors: boolean
+      let thisScenarioErrorMessages = `\n'${scenario.name}'\n--------------------------------------------------------------------`
+
       // ✅ validate scenario inputs are present
       if (scenario.inputs.length === 0) {
-        invalid = true
-        errorMessage += `\n- ${scenario.name}: has no inputs`
+        thisScenarioHasErrors = true
+        errorMessage += '\n- Scenario as no inputs'
       }
 
       // ✅ validate scenario[i].inputs[i].name is not blank
       for (const [key, value] of Object.entries(scenario.inputs)) {
         if (!value) {
-          invalid = true
-          errorMessage += `\n- ${scenario.name}: input '${key}' has a blank value`
+          thisScenarioHasErrors = true
+          thisScenarioErrorMessages += `\n- Input '${key}' has a blank value`
         }
       }
 
       // ✅ validate scenario state update(s) are present
       if (scenario.expectedStateUpdates.length === 0) {
-        invalid = true
-        errorMessage += `\n- ${scenario.name}: has no expected state update(s)`
+        thisScenarioHasErrors = true
+        thisScenarioErrorMessages += '\n- Scenario has no expected state update(s)'
       }
 
       if (scenario.expectedStateUpdates?.length > 0) {
-        // ✅ validate scenario[i].expectedStateUpdates[i].entityName is not blank
         for (const expectedStateUpdate of scenario.expectedStateUpdates) {
+          // ✅ validate scenario[i].expectedStateUpdates[i].entityName is not blank
           if (!expectedStateUpdate.entityName) {
-            invalid = true
-            errorMessage += `\n- ${scenario.name}: has state update with a blank entity name`
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += '\n- State update has a blank entity name'
           }
-        }
 
-        // ✅ validate scenario[i].expectedStateUpdates[i].values[i].field value is not blank
-        for (const expectedStateUpdate of scenario.expectedStateUpdates) {
-          if (!expectedStateUpdate.values || expectedStateUpdate.values.length === 0) {
-            invalid = true
-            errorMessage += `\n- ${scenario.name}: state update for entity '${utils.toPascalCase(
+          // ✅ validate scenario[i].expectedStateUpdates[i] has values or notValues data present
+          if (!expectedStateUpdate.values && !expectedStateUpdate.notValues) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n- State update for '${utils.toPascalCase(
               expectedStateUpdate.entityName
-            )}' has no values`
+            )}' needs \`values\` or \`notValues\``
           }
-        }
 
-        // ✅ validate scenario[i].expectedStateUpdates[i].values[i].field value is not blank
-        for (const expectedStateUpdate of scenario.expectedStateUpdates) {
+          // ✅ validate scenario[i].expectedStateUpdates[i].values is not empty (if present)
+          if (expectedStateUpdate.values && expectedStateUpdate.values.length === 0) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n- State update for '${utils.toPascalCase(
+              expectedStateUpdate.entityName
+            )}' \`values\` expectations is empty`
+          }
+
+          // ✅ validate scenario[i].expectedStateUpdates[i].notValues is not empty (if present)
+          if (expectedStateUpdate.notValues && expectedStateUpdate.notValues.length === 0) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n- State update for '${utils.toPascalCase(
+              expectedStateUpdate.entityName
+            )}' \`notValues\` expectations is empty`
+          }
+
+          // ✅ validate scenario[i].expectedStateUpdates[i].values[i].field value is not blank
           if (expectedStateUpdate.values && expectedStateUpdate.values.length > 0) {
             for (const [key, value] of Object.entries(expectedStateUpdate.values)) {
               if (!value) {
-                invalid = true
-                errorMessage += `\n- ${scenario.name}: state update field '${key}' has a blank value`
+                thisScenarioHasErrors = true
+                thisScenarioErrorMessages += `\n- State update for \`values\` field '${key}' has a blank value`
+              }
+            }
+          }
+
+          // ✅ validate scenario[i].expectedStateUpdates[i].notValues[i].field value is not blank
+          if (expectedStateUpdate.notValues && expectedStateUpdate.notValues.length > 0) {
+            for (const [key, value] of Object.entries(expectedStateUpdate.notValues)) {
+              if (!value) {
+                thisScenarioHasErrors = true
+                thisScenarioErrorMessages += `\n- State update for \`notValues\` field '${key}' has a blank value`
               }
             }
           }
@@ -92,54 +118,97 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
       }
 
       if (scenario.expectedVisibleUpdates?.length > 0) {
-        // ✅ validate scenario[i].expectedVisibleUpdates[i].entityName is not blank
         for (const expectedVisibleUpdate of scenario.expectedVisibleUpdates) {
+          // ✅ validate scenario[i].expectedVisibleUpdates[i].entityName is not blank
           if (!expectedVisibleUpdate.readModelName) {
-            invalid = true
-            errorMessage += `\n- ${scenario.name}: has visible update with a blank read model name`
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += '\n- Visible update has a blank read model name'
           }
-        }
 
-        // ✅ validate scenario[i].expectedStateUpdates[i].values[i].field value is not blank
-        for (const expectedVisibleUpdate of scenario.expectedVisibleUpdates) {
+          // ✅ validate scenario[i].expectedVisibleUpdates[i] has values or notValues data present
+          if (!expectedVisibleUpdate.values && !expectedVisibleUpdate.notValues) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n- Visible update for '${utils.toPascalCase(
+              expectedVisibleUpdate.readModelName
+            )}' needs \`values\` or \`notValues\``
+          }
+
+          // ✅ validate scenario[i].expectedVisibleUpdates[i].values[i].field value is not blank
           for (const [key, value] of Object.entries(expectedVisibleUpdate.values)) {
             if (!value) {
-              invalid = true
-              errorMessage += `\n- ${scenario.name}: visible update field '${key}' has a blank value`
+              thisScenarioHasErrors = true
+              thisScenarioErrorMessages += `\n- Visible update field '${key}' has a blank value`
             }
           }
-        }
 
-        // ✅ validate scenario[i].expectedVisibleUpdates[i].value are not empty, if present
-        for (const expectedVisibleUpdates of scenario.expectedVisibleUpdates) {
-          if (expectedVisibleUpdates.values.length === 0) {
-            invalid = true
-            errorMessage += `\n- ${scenario.name}: visible update '${expectedVisibleUpdates.readModelName}' has no expected values`
+          // ✅ validate scenario[i].expectedVisibleUpdates[i].values is not empty, if present
+          if (expectedVisibleUpdate.values && expectedVisibleUpdate.values.length === 0) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n- Visible update for '${utils.toPascalCase(
+              expectedVisibleUpdate.readModelName
+            )}' \`values\` expectations is empty`
+          }
+
+          // ✅ validate scenario[i].expectedVisibleUpdates[i].notValues is not empty, if present
+          if (expectedVisibleUpdate.notValues && expectedVisibleUpdate.notValues.length === 0) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n- Visible update for '${utils.toPascalCase(
+              expectedVisibleUpdate.readModelName
+            )}' \`notValues\` expectations is empty`
+          }
+
+          // ✅ validate scenario[i].expectedVisibleUpdates[i].values[i].field value is not blank
+          if (expectedVisibleUpdate.values && expectedVisibleUpdate.values.length > 0) {
+            for (const [key, value] of Object.entries(expectedVisibleUpdate.values)) {
+              if (!value) {
+                thisScenarioHasErrors = true
+                thisScenarioErrorMessages += `\n- Visible update for \`values\` field '${key}' has a blank value`
+              }
+            }
+          }
+
+          // ✅ validate scenario[i].expectedVisibleUpdates[i].notValues[i].field value is not blank
+          if (expectedVisibleUpdate.notValues && expectedVisibleUpdate.notValues.length > 0) {
+            for (const [key, value] of Object.entries(expectedVisibleUpdate.notValues)) {
+              if (!value) {
+                thisScenarioHasErrors = true
+                thisScenarioErrorMessages += `\n- Visible update for \`notValues\` field '${key}' has a blank value`
+              }
+            }
+          }
+
+          // ✅ validate scenario[i].expectedVisibleUpdates[i].authorized is not empty, if present
+          if (!expectedVisibleUpdate.authorized || expectedVisibleUpdate.authorized.length === 0) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n- Visible update for '${utils.toPascalCase(
+              expectedVisibleUpdate.readModelName
+            )}' has no authorization defined`
+          }
+
+          // ✅ validate scenario[i].expectedVisibleUpdates[i].authorized is an array if value is not 'all'
+          if (typeof expectedVisibleUpdate.authorized === 'string' && expectedVisibleUpdate.authorized !== 'all') {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n- Visible update for '${utils.toPascalCase(
+              expectedVisibleUpdate.readModelName
+            )}' roles should be inside an array`
           }
         }
+      }
 
-        // ✅ validate scenario[i].expectedVisibleUpdates[i].authorized is not empty, if present
-        for (const expectedVisibleUpdates of scenario.expectedVisibleUpdates) {
-          if (expectedVisibleUpdates.authorized.length === 0) {
-            invalid = true
-            errorMessage += `\n- ${scenario.name}: visible update '${expectedVisibleUpdates.readModelName}' has no authorization defined`
-          }
-        }
-
-        // ✅ validate scenario[i].expectedVisibleUpdates[i].authorized is an array if value is not 'all'
-        for (const expectedVisibleUpdates of scenario.expectedVisibleUpdates) {
-          if (typeof expectedVisibleUpdates.authorized === 'string' && expectedVisibleUpdates.authorized !== 'all') {
-            invalid = true
-            errorMessage += `\n- ${scenario.name}: visible update '${expectedVisibleUpdates.readModelName}' roles should be inside an array`
-          }
-        }
+      if (thisScenarioHasErrors) {
+        invalid = true
+        scenarioErrorMessages.push(thisScenarioErrorMessages)
       }
     }
   }
 
+  if (scenarioErrorMessages.length > 0) {
+    errorMessage += `${scenarioErrorMessages.join('\n')}`
+  }
+
   if (invalid && errorMessage.length > 0) {
     // alphabetize error messages
-    errorMessage = errorMessage.split('\n').sort().join('\n')
+    // errorMessage = errorMessage.split('\n').sort().join('\n')
     const errorMessageHeading = `\n\n'${process.name}' Assertion Issues\n=====================================================================`
     // prepend heading to error messages
     errorMessage = `${errorMessageHeading}\n${errorMessage}`
