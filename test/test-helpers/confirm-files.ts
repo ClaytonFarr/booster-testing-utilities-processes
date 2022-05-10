@@ -290,19 +290,21 @@ export const confirmProcessFiles = async (
       ]
       entityFileConstructorFields.forEach((field) => {
         const entityFieldName = field[1].trim()
-        const entityFieldTypes = field[2]
-          .replace(/=|'|"|,|\/\/.*/g, '')
+        const entityFieldTypesUntrimmed = field[2]
+          .replace(/(?:=.*)|,|\/\/.*/g, '')
           .split(' | ')
           .sort()
-        const entityFieldTypesString = entityFieldTypes.map((type) => type.trim()).join('|')
-        const mismatchedFieldTypes = assertedEntityFields.find(
-          (item) => item.fieldName === entityFieldName && !item.fieldTypes.includes(entityFieldTypesString)
-        )
-        if (mismatchedFieldTypes) {
-          invalid = true
-          errorMessage += `\n👽 Entity '${entity.entityName}' field '${entityFieldName}' missing types (expecting ${
-            assertedEntityFields.find((item) => item.fieldName === entityFieldName).fieldTypes
-          })`
+        const entityFieldTypes = entityFieldTypesUntrimmed.map((type) => type.trim())
+        const matchingAssertedField = assertedEntityFields.find((item) => item.fieldName === entityFieldName)
+        if (matchingAssertedField) {
+          const assertedFieldTypes = matchingAssertedField.fieldTypes
+          const missingFieldTypes = assertedFieldTypes.filter((type) => !entityFieldTypes.includes(type))
+          if (missingFieldTypes && missingFieldTypes.length > 0) {
+            invalid = true
+            errorMessage += `\n👽 Entity '${
+              entity.entityName
+            }' field '${entityFieldName}' missing types: ${missingFieldTypes.join(', ')}`
+          }
         }
       })
     }
@@ -372,21 +374,21 @@ export const confirmProcessFiles = async (
       ]
       readModelConstructorFields.forEach((field) => {
         const readModelFieldName = field[1].trim()
-        const readModelFieldType = field[2]
-          .replace(/=|'|"|,|\/\/.*/g, '')
+        const readModelFieldTypeUntrimmed = field[2]
+          .replace(/(?:=.*)|,|\/\/.*/g, '')
           .split(' | ')
           .sort()
-        const readModelFieldTypesString = readModelFieldType.map((type) => type.trim()).join('|')
-        const mismatchedFieldTypes = assertedReadModelFields.find(
-          (item) => item.fieldName === readModelFieldName && !item.fieldTypes.includes(readModelFieldTypesString)
-        )
-        if (mismatchedFieldTypes) {
-          invalid = true
-          errorMessage += `\n🔭 Read Model '${
-            readModel.readModelName
-          }' field '${readModelFieldName}' missing types (expecting ${
-            assertedReadModelFields.find((item) => item.fieldName === readModelFieldName).fieldTypes
-          })`
+        const readModelFieldTypes = readModelFieldTypeUntrimmed.map((type) => type.trim())
+        const matchingAssertedField = assertedReadModelFields.find((item) => item.fieldName === readModelFieldName)
+        if (matchingAssertedField) {
+          const assertedFieldTypes = matchingAssertedField.fieldTypes
+          const missingFieldTypes = assertedFieldTypes.filter((type) => !readModelFieldTypes.includes(type))
+          if (missingFieldTypes && missingFieldTypes.length > 0) {
+            invalid = true
+            errorMessage += `\n👽 Entity '${
+              readModel.readModelName
+            }' field '${readModelFieldName}' missing types: ${missingFieldTypes.join(', ')}`
+          }
         }
       })
     }
