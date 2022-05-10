@@ -14,3 +14,6 @@ NOTES
   - testable values are currently limited to standard types (string, number, boolean, UUID);
     cannot use custom types as values (even if they resolve to standard type, like an enum)
     or objects (e.g. testing for values of fields within an object)
+- currently cannot test if shouldNotValues fields do not exist
+  - e.g. notValues: { stripeId: 'string' }
+  - field must exist in schema; e.g. notValues: { active: true }
