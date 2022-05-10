@@ -385,7 +385,7 @@ export const confirmProcessFiles = async (
           const missingFieldTypes = assertedFieldTypes.filter((type) => !readModelFieldTypes.includes(type))
           if (missingFieldTypes && missingFieldTypes.length > 0) {
             invalid = true
-            errorMessage += `\n👽 Entity '${
+            errorMessage += `\n🔭 Read Model '${
               readModel.readModelName
             }' field '${readModelFieldName}' missing types: ${missingFieldTypes.join(', ')}`
           }
