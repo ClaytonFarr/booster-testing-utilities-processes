@@ -10,3 +10,7 @@ NOTES
 - when adding new files, for GraphQL server to run -
   - commands / read models must have some auth defined
   - roles files must have some content
+- scenario state / visible update tests
+  - testable values are currently limited to standard types (string, number, boolean, UUID);
+    cannot use custom types as values (even if they resolve to standard type, like an enum)
+    or objects (e.g. testing for values of fields within an object)
