@@ -291,7 +291,7 @@ export const confirmProcessFiles = async (
       entityFileConstructorFields.forEach((field) => {
         const entityFieldName = field[1].trim()
         const entityFieldTypes = field[2]
-          .replace(/,|\/\/.*/g, '')
+          .replace(/=|'|"|,|\/\/.*/g, '')
           .split(' | ')
           .sort()
         const entityFieldTypesString = entityFieldTypes.map((type) => type.trim()).join('|')
@@ -373,7 +373,7 @@ export const confirmProcessFiles = async (
       readModelConstructorFields.forEach((field) => {
         const readModelFieldName = field[1].trim()
         const readModelFieldType = field[2]
-          .replace(/,|\/\/.*/g, '')
+          .replace(/=|'|"|,|\/\/.*/g, '')
           .split(' | ')
           .sort()
         const readModelFieldTypesString = readModelFieldType.map((type) => type.trim()).join('|')
