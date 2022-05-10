@@ -226,11 +226,15 @@ export const testProcessExpectations = async (
             // query readModel for NOT values
             let shouldNotHaveItems: Record<string, unknown>[] = []
             if (visibleUpdate.notValues) {
-              shouldNotHaveItems = await readModel.evaluateReadModelProjection(
-                readGraphQLclient,
-                visibleUpdate.readModelName,
-                visibleUpdate.notValues
-              )
+              try {
+                shouldNotHaveItems = await readModel.evaluateReadModelProjection(
+                  readGraphQLclient,
+                  visibleUpdate.readModelName,
+                  visibleUpdate.notValues
+                )
+              } catch (error) {
+                shouldNotHaveItems = error
+              }
             }
 
             // report any errors
