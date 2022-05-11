@@ -142,7 +142,9 @@ export const testProcessExpectations = async (
             )
           } catch (error) {
             console.log(
-              `💥 'No state update found for '${stateUpdate.entityName}' within ${resultWaitTime / 1000} seconds`
+              `💥 'No state update found for '${stateUpdate.entityName}' within ${
+                resultWaitTime / 1000
+              } seconds\n    - Searched for key: '${primaryKey}'`
             )
           }
 
@@ -158,18 +160,65 @@ export const testProcessExpectations = async (
           let stateUpdateCheckErrors = ''
           if (matchingUpdate && stateUpdate.values) {
             for (const [key, value] of Object.entries(stateUpdate.values)) {
-              const valueIsTestable = !util.valueIsTypeKeyword(value)
               let expectedState: boolean
-              if (valueIsTestable) expectedState = matchingUpdate.value[key] === value
-              if (!valueIsTestable) expectedState = !!matchingUpdate.value[key] // if no testable value given confirm key is present with any value
-              stateUpdateHasCorrectState.push(expectedState)
-              // if expected state incorrect add error message
-              if (!expectedState) {
-                invalid = true
-                if (valueIsTestable)
-                  stateUpdateCheckErrors += `\n   ↪ Field '${key}' value is '${matchingUpdate.value[key]}' (expected '${value}')`
-                if (!valueIsTestable)
-                  stateUpdateCheckErrors += `\n   ↪ Field '${key}' is missing (with any ${value} value)`
+              const valueType = util.inferValueType(value)
+              // ...if value is a string, number, boolean, UUID
+              if (valueType !== 'object' && valueType !== 'array') {
+                const valueIsTestable = !util.valueIsTypeKeyword(value)
+                if (valueIsTestable) expectedState = matchingUpdate.value[key] === value
+                if (!valueIsTestable) expectedState = !!matchingUpdate.value[key] // if no testable value given confirm key is present with any value
+                if (!expectedState) {
+                  invalid = true
+                  if (valueIsTestable)
+                    stateUpdateCheckErrors += `\n   ↪ Field '${key}' value is '${matchingUpdate.value[key]}' (expected '${value}')`
+                  if (!valueIsTestable)
+                    stateUpdateCheckErrors += `\n   ↪ Field '${key}' is missing (with any ${value} value)`
+                }
+              }
+              // ...if value is a object
+              if (valueType === 'object') {
+                const matchingUpdateValue = matchingUpdate.value[key]
+                expectedState = !!JSON.stringify(matchingUpdateValue).includes(JSON.stringify(value))
+                if (!expectedState) {
+                  invalid = true
+                  stateUpdateCheckErrors += `\n   ↪ Field '${key}' value IS \`${JSON.stringify(
+                    matchingUpdate.value[key],
+                    null,
+                    2
+                  )}\` EXPECTED \`${JSON.stringify(value, null, 2)}\``
+                }
+              }
+              // ...if value is an array
+              if (valueType === 'array') {
+                const matchingUpdateValue = matchingUpdate.value[key]
+                const valueArray = value as unknown[]
+                // ...if matchingUpdateValue is an array
+                if (Array.isArray(matchingUpdateValue)) {
+                  // ...check if every item in value array is present in matchingUpdateValue array
+                  expectedState = valueArray.every((value) =>
+                    matchingUpdateValue.some((matchingValue) =>
+                      JSON.stringify(matchingValue).includes(JSON.stringify(value))
+                    )
+                  )
+                  if (!expectedState) {
+                    invalid = true
+                    stateUpdateCheckErrors += `\n   ↪ Field '${key}' value IS \`${JSON.stringify(
+                      matchingUpdate.value[key],
+                      null,
+                      2
+                    )}\` EXPECTED \`${JSON.stringify(value, null, 2)}\``
+                  }
+                }
+                // ...if matchingUpdateValue is not array report mismatch
+                if (!Array.isArray(matchingUpdateValue)) {
+                  expectedState = false
+                  invalid = true
+                  stateUpdateCheckErrors += `\n   ↪ Field '${key}' expects an array and the matching updated field type is '${util.inferValueType(
+                    matchingUpdateValue
+                  )}'`
+                }
+                // if expected state incorrect add error message
+                stateUpdateHasCorrectState.push(expectedState)
               }
             }
           }
@@ -246,28 +295,20 @@ export const testProcessExpectations = async (
             }
             // if no items found for shouldHave
             if (shouldHaveItems.length === 0) {
-              const valuesMessage = Object.entries(visibleUpdate.values)
-                .map(([key, value]) => {
-                  const valueIsKeyword = util.valueIsTypeKeyword(value)
-                  const keyLabel = valueIsKeyword ? key : `${key}:`
-                  const valueLabel = valueIsKeyword ? `(${value})` : `'${value}'`
-                  return `${keyLabel} ${valueLabel}`
-                })
-                .join(', ')
-              thisScenarioErrorMessages += `\n   ↪ Could not find item with ${valuesMessage}`
+              thisScenarioErrorMessages += `\n   ↪ Could not find item with values:\n${JSON.stringify(
+                visibleUpdate.values,
+                null,
+                2
+              )}`
             }
 
             // if any items found for shouldNotHave
             if (shouldNotHaveItems.length > 0) {
-              const valuesMessage = Object.entries(visibleUpdate.notValues)
-                .map(([key, value]) => {
-                  const valueIsKeyword = util.valueIsTypeKeyword(value)
-                  const keyLabel = valueIsKeyword ? key : `${key}:`
-                  const valueLabel = valueIsKeyword ? `(${value})` : `'${value}'`
-                  return `${keyLabel} ${valueLabel}`
-                })
-                .join(', ')
-              thisScenarioErrorMessages += `\n   ↪ Found item that should NOT have ${valuesMessage}`
+              thisScenarioErrorMessages += `\n   ↪ Found item that should NOT have values:\n${JSON.stringify(
+                visibleUpdate.values,
+                null,
+                2
+              )}`
             }
           }
         }
