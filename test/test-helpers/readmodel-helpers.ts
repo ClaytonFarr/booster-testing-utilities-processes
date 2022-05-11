@@ -11,7 +11,7 @@ import gql from 'graphql-tag'
 export const evaluateReadModelProjection = async (
   graphQLclient: ApolloClient<NormalizedCacheObject>,
   readModelName: string,
-  fields: Record<string, string | number | boolean | UUID>,
+  fields: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>,
   limitResultsTo?: number,
   sortBy?: Record<string, unknown>
 ): Promise<Record<string, unknown>[]> => {
@@ -28,16 +28,75 @@ export const evaluateReadModelProjection = async (
   // ...create filter string
   let filterString = '{ '
   fieldItems.forEach((field) => {
-    // currently limited to filters from strings, numbers, and booleans
-    // JSON or stringified JSON value checks will be ignored
-    if (typeof field.value !== 'string') {
-      filterString += `${field.fieldName}: { eq: ${field.value} }, `
-    }
-    if (typeof field.value === 'string' && !util.valueIsTypeKeyword(field.value) && !util.isStringJSON(field.value)) {
-      filterString += `${field.fieldName}: { contains: "${field.value}" }, `
-    }
-    if (util.valueIsTypeKeyword(field.value)) {
+    const valueTypeIsKeyword = util.valueIsTypeKeyword(field.value)
+    const valueType = util.inferValueType(field.value)
+
+    if (valueTypeIsKeyword) {
       filterString += `${field.fieldName}: { isDefined: true }, `
+    }
+    if (!valueTypeIsKeyword) {
+      // currently limited to filters from strings, numbers, and booleans
+      // JSON or stringified JSON value checks will be ignored
+      if (valueType === 'string' && !util.isStringJSON(field.value)) {
+        filterString += `${field.fieldName}: { contains: "${field.value}" }, `
+      }
+      if (valueType === 'number' || valueType === 'boolean') {
+        filterString += `${field.fieldName}: { eq: ${field.value} }, `
+      }
+      if (valueType === 'UUID') {
+        filterString += `${field.fieldName}: { eq: "${field.value}" }, `
+      }
+      if (valueType === 'object') {
+        for (const [key, value] of Object.entries(field.value)) {
+          const valueType = util.inferValueType(value)
+          if (valueType === 'string') {
+            filterString += `${field.fieldName}: { ${key}: { contains: "${value}" } }, `
+          }
+          if (valueType === 'number' || valueType === 'boolean') {
+            filterString += `${field.fieldName}: { ${key}: { eq: ${value} } }, `
+          }
+          if (valueType === 'UUID') {
+            filterString += `${field.fieldName}: { ${key}: { eq: "${value}" } }, `
+          }
+        }
+      }
+      if (valueType === 'array' && field.value.length > 0) {
+        const arrayType = util.inferValueType(field.value[0])
+        if (arrayType === 'string') {
+          if (field.value.length === 1) filterString += `${field.fieldName}: { includes: "${field.value[0]}" }, `
+          if (field.value.length > 1) {
+            filterString += 'and: [ '
+            for (const value of field.value) {
+              filterString += `{ ${field.fieldName}: { includes: "${value}" } }, `
+            }
+            filterString += '], '
+          }
+        }
+        if (arrayType === 'number' || arrayType === 'boolean') {
+          if (field.value.length === 1) filterString += `${field.fieldName}: { includes: ${field.value[0]} }, `
+          if (field.value.length > 1) {
+            filterString += 'and: [ '
+            for (const value of field.value) {
+              filterString += `{ ${field.fieldName}: { includes: ${value} } }, `
+            }
+            filterString += '], '
+          }
+        }
+        if (arrayType === 'object') {
+          if (field.value.length === 1) {
+            const valueAsJson = util.convertObjectToJsonString(field.value[0])
+            filterString += `${field.fieldName}: { includes: ${valueAsJson} }, `
+          }
+          if (field.value.length > 1) {
+            filterString += 'and: [ '
+            for (const thisValue of field.value) {
+              const valueAsJson = util.convertObjectToJsonString(thisValue)
+              filterString += `{ ${field.fieldName}: { includes: ${valueAsJson} } }, `
+            }
+            filterString += '], '
+          }
+        }
+      }
     }
   })
   filterString += ' }'
