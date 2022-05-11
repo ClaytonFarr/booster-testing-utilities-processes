@@ -47,7 +47,11 @@ export const toSentenceCase = (str: string): string =>
       index === 0 ? leftTrim.toUpperCase() : leftTrim.toUpperCase()
     )
 
-export const inferValueType = (val: string | number | boolean | Record<string, unknown> | unknown[] | UUID): string => {
+export const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export const inferValueType = (
+  val: string | number | boolean | Record<string, unknown> | unknown[] | UUID | unknown
+): string => {
   let type: string
   switch (val) {
     case 'string':
@@ -64,11 +68,17 @@ export const inferValueType = (val: string | number | boolean | Record<string, u
     case 'UUID':
       type = 'UUID'
       break
+    case 'object':
+      type = 'object'
+      break
+    case 'array':
+      type = 'array'
+      break
     case 'unknown':
       type = 'unknown'
       break
     default:
-      type = typeof val
+      type = Array.isArray(val) ? 'array' : typeof val
   }
   return type
 }
@@ -121,6 +131,8 @@ export const valueIsTypeKeyword = (val: unknown): boolean => {
     case 'number':
     case 'boolean':
     case 'UUID':
+    case 'object':
+    case 'array':
     case 'unknown':
       check = true
       break
@@ -130,7 +142,23 @@ export const valueIsTypeKeyword = (val: unknown): boolean => {
   return check
 }
 
-export const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export const convertObjectToJsonString = (obj: Record<string, unknown>, wrapInBrackets = true): string => {
+  let json = wrapInBrackets ? '{ ' : ''
+  for (const key in obj) {
+    // eslint-disable-next-line no-prototype-builtins
+    if (obj.hasOwnProperty(key)) {
+      const value = obj[key]
+      const valueType = inferValueType(value)
+      let formattedValue = value
+      if (valueType === 'string') formattedValue = `"${value}"`
+      if (valueType === 'object') formattedValue = convertObjectToJsonString(value as Record<string, unknown>)
+      if (valueType === 'array') formattedValue = `[${value}]`
+      json += `${key}: ${formattedValue}, `
+    }
+  }
+  json += wrapInBrackets ? '}' : ''
+  return json
+}
 
 export const convertScenarioInputsToCommandInputs = (
   scenarioInputs: Record<string, string | number | boolean | UUID>,
