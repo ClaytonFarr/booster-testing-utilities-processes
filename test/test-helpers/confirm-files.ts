@@ -275,9 +275,13 @@ export const confirmProcessFiles = async (
   // 👽 Confirm each ENTITY constructor FIELD TYPE matches the type inferred from scenario[i].expectedStateUpdates[i].values[i].value
   for (const entity of scenarioEntities) {
     // infer field types from assertions
-    const assertedEntityFields: AssertionValue[] = entity.fields.map((item) => {
+    const allAssertedEntityFields: AssertionValue[] = entity.fields.map((item) => {
       return { fieldName: item.fieldName, fieldTypes: item.fieldTypes }
     })
+    // remove asserted fieldTypes that cannot be confirmed from files (asserted object/array presumed to = custom type)
+    const relevantAssertedEntityFields = allAssertedEntityFields.filter(
+      (type) => !type.fieldTypes.includes('object') && !type.fieldTypes.includes('array')
+    )
     // compare entity field types to types inferred from assertions
     const entityFileName = util.toKebabCase(entity.entityName)
     const entityFilePath = `${path.entitiesDirectoryPath}/${entityFileName}.ts`
@@ -295,7 +299,7 @@ export const confirmProcessFiles = async (
           .split(' | ')
           .sort()
         const entityFieldTypes = entityFieldTypesUntrimmed.map((type) => type.trim())
-        const matchingAssertedField = assertedEntityFields.find((item) => item.fieldName === entityFieldName)
+        const matchingAssertedField = relevantAssertedEntityFields.find((item) => item.fieldName === entityFieldName)
         if (matchingAssertedField) {
           const assertedFieldTypes = matchingAssertedField.fieldTypes
           const missingFieldTypes = assertedFieldTypes.filter((type) => !entityFieldTypes.includes(type))
@@ -359,9 +363,13 @@ export const confirmProcessFiles = async (
   // 🔭 Confirm each READ MODEL constructor FIELD TYPE matches the type inferred from scenario[i].expectedVisibleUpdates[i].values[i].value
   for (const readModel of scenarioReadModels) {
     // infer field types from assertions
-    const assertedReadModelFields = readModel.fields.map((item) => {
+    const allAssertedReadModelFields = readModel.fields.map((item) => {
       return { fieldName: item.fieldName, fieldTypes: item.fieldTypes }
     })
+    // remove asserted fieldTypes that cannot be confirmed from files (asserted object/array presumed to = custom type)
+    const relevantAssertedReadModelFields = allAssertedReadModelFields.filter(
+      (type) => !type.fieldTypes.includes('object') && !type.fieldTypes.includes('array')
+    )
     // compare read model constructor field types to types inferred from assertions
     const readModelFileName = util.toKebabCase(readModel.readModelName)
     const readModelFilePath = `${path.readModelsDirectoryPath}/${readModelFileName}.ts`
@@ -379,7 +387,9 @@ export const confirmProcessFiles = async (
           .split(' | ')
           .sort()
         const readModelFieldTypes = readModelFieldTypeUntrimmed.map((type) => type.trim())
-        const matchingAssertedField = assertedReadModelFields.find((item) => item.fieldName === readModelFieldName)
+        const matchingAssertedField = relevantAssertedReadModelFields.find(
+          (item) => item.fieldName === readModelFieldName
+        )
         if (matchingAssertedField) {
           const assertedFieldTypes = matchingAssertedField.fieldTypes
           const missingFieldTypes = assertedFieldTypes.filter((type) => !readModelFieldTypes.includes(type))
@@ -547,7 +557,7 @@ export const confirmProcessFiles = async (
               })
             })
             // if no match found between entity : 1 event handler : trigger, exit this check with error
-            // TODO: possibly refactor to check farther up event handler chain to trigger than 1 file
+            // LATER: possibly refactor to check farther up event handler chain to trigger than 1 file
             invalid = true
             errorMessage += `\n🚀 Cannot find event path from trigger to entity '${entity.entityName}' (inspected event handlers 1 event deep)`
           }
