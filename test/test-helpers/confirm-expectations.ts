@@ -141,11 +141,11 @@ export const testProcessExpectations = async (
               resultWaitTime
             )
           } catch (error) {
-            console.log(
-              `💥 'No state update found for '${stateUpdate.entityName}' within ${
-                resultWaitTime / 1000
-              } seconds\n    - Searched for key: '${primaryKey}'`
-            )
+            invalid = true
+            errorMessage += `\n👽 No state update found for '${stateUpdate.entityName}' within ${
+              resultWaitTime / 1000
+            } seconds\n    - Searched for key: '${primaryKey}'`
+            continue
           }
 
           // check if any matching snapshots exist for entity
