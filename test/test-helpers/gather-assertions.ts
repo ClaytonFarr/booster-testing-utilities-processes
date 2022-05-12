@@ -123,12 +123,10 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
           })
         }
         // ...enter entity and values
-        if (!allScenarioEntitiesData.some((item) => item.entityName === stateUpdate.entityName)) {
-          allScenarioEntitiesData.push({
-            entityName: util.toPascalCase(stateUpdate.entityName),
-            fields,
-          })
-        }
+        allScenarioEntitiesData.push({
+          entityName: util.toPascalCase(stateUpdate.entityName),
+          fields,
+        })
       }
     }
   }
@@ -138,29 +136,21 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
     // ...if entity not yet in scenarioEntitiesMerged add it
     if (!allScenarioEntitiesMerged.some((scenario) => scenario.entityName === entity.entityName)) {
       allScenarioEntitiesMerged.push(entity)
-      // ...if entity already exists in allScenarioEntitiesMerged merge additional data
     } else {
-      const matchedIndex = allScenarioEntitiesMerged.findIndex((entity) => entity.entityName === entity.entityName)
-      //  ...merge values
-      allScenarioEntitiesMerged[matchedIndex].fields = allScenarioEntitiesMerged[matchedIndex].fields.concat(
-        entity.fields
-      )
-      // ...combine identical fieldNames and merge their field types
-      const entityFieldNames = allScenarioEntitiesMerged[matchedIndex].fields.map((entity) => entity.fieldName)
-      const entityFieldNamesUnique = [...new Set(entityFieldNames)]
-      for (const entityFieldName of entityFieldNamesUnique) {
-        let fieldTypes = allScenarioEntitiesMerged[matchedIndex].fields
-          .filter((entity) => entity.fieldName === entityFieldName)
-          .map((entity) => entity.fieldTypes)
-          .flat()
-          .sort()
-        fieldTypes = [...new Set(fieldTypes)].sort()
-        allScenarioEntitiesMerged[matchedIndex].fields = allScenarioEntitiesMerged[matchedIndex].fields.map(
-          (entity) => {
-            if (entity.fieldName === entityFieldName) entity.fieldTypes = fieldTypes
-            return entity
-          }
-        )
+      // ...if entity already exists in allScenarioEntitiesMerged merge additional data
+      const matchedIndex = allScenarioEntitiesMerged.findIndex((e) => e.entityName === entity.entityName)
+      const existingEntity = allScenarioEntitiesMerged[matchedIndex]
+      for (const field of entity.fields) {
+        const existingField = existingEntity.fields.find((f) => f.fieldName === field.fieldName)
+        if (existingField) {
+          // merge any new field types
+          const existingTypes = existingField.fieldTypes
+          const newTypes = field.fieldTypes
+          const mergedTypes = [...new Set([...existingTypes, ...newTypes])]
+          existingField.fieldTypes = mergedTypes
+        } else {
+          existingEntity.fields.push(field)
+        }
       }
     }
   }
@@ -197,14 +187,11 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
             ? visibleUpdate.authorized.map((item) => util.toPascalCase(item))
             : visibleUpdate.authorized
           // ...enter read model data
-          if (!allScenarioReadModelsData.some((model) => model.readModelName === visibleUpdate.readModelName)) {
-            allScenarioReadModelsData.push({
-              readModelName: util.toPascalCase(visibleUpdate.readModelName),
-              fields,
-              authorized:
-                typeof readModelAuthorization === 'string' ? [readModelAuthorization] : readModelAuthorization,
-            })
-          }
+          allScenarioReadModelsData.push({
+            readModelName: util.toPascalCase(visibleUpdate.readModelName),
+            fields,
+            authorized: typeof readModelAuthorization === 'string' ? [readModelAuthorization] : readModelAuthorization,
+          })
         }
       }
     }
@@ -215,37 +202,21 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
     // ...if read model not yet in scenarioEntitiesMerged add it
     if (!allScenarioReadModelsMerged.some((scenario) => scenario.readModelName === readModel.readModelName)) {
       allScenarioReadModelsMerged.push(readModel)
-      // ...if read model already exists in allScenarioReadModelsMerged merge additional data
     } else {
-      const matchedIndex = allScenarioReadModelsMerged.findIndex(
-        (readModel) => readModel.readModelName === readModel.readModelName
-      )
-      //  ...merge values
-      allScenarioReadModelsMerged[matchedIndex].fields = allScenarioReadModelsMerged[matchedIndex].fields.concat(
-        readModel.fields
-      )
-      //  ...merge authorization
-      let mergedRoles = [...allScenarioReadModelsMerged[matchedIndex].authorized, ...readModel.authorized]
-      mergedRoles = [...new Set(mergedRoles)]
-      allScenarioReadModelsMerged[matchedIndex].authorized = mergedRoles
-      // ...combine identical fieldNames and merge their field types
-      const readModelFieldNames = allScenarioReadModelsMerged[matchedIndex].fields.map(
-        (readModel) => readModel.fieldName
-      )
-      const readModelFieldNamesUnique = [...new Set(readModelFieldNames)]
-      for (const readModelFieldName of readModelFieldNamesUnique) {
-        let fieldTypes = allScenarioReadModelsMerged[matchedIndex].fields
-          .filter((readModel) => readModel.fieldName === readModelFieldName)
-          .map((readModel) => readModel.fieldTypes)
-          .flat()
-          .sort()
-        fieldTypes = [...new Set(fieldTypes)].sort()
-        allScenarioReadModelsMerged[matchedIndex].fields = allScenarioReadModelsMerged[matchedIndex].fields.map(
-          (readModel) => {
-            if (readModel.fieldName === readModelFieldName) readModel.fieldTypes = fieldTypes
-            return readModel
-          }
-        )
+      // ...if read model already exists in allScenarioReadModelsMerged merge additional data
+      const matchedIndex = allScenarioReadModelsMerged.findIndex((rm) => rm.readModelName === readModel.readModelName)
+      const existingReadModel = allScenarioReadModelsMerged[matchedIndex]
+      for (const field of readModel.fields) {
+        const existingField = existingReadModel.fields.find((f) => f.fieldName === field.fieldName)
+        if (existingField) {
+          // merge any new field types
+          const existingTypes = existingField.fieldTypes
+          const newTypes = field.fieldTypes
+          const mergedTypes = [...new Set([...existingTypes, ...newTypes])]
+          existingField.fieldTypes = mergedTypes
+        } else {
+          existingReadModel.fields.push(field)
+        }
       }
     }
   }
