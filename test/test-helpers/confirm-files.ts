@@ -218,11 +218,11 @@ export const confirmProcessFiles = async (
   if (triggerFile) {
     triggerRegisteredEvents = triggerFile.match(/(?<!\/\/.*)new (\w+)/gm) // a little brittle, but works for now
     triggerRegisteredEvents = triggerRegisteredEvents?.filter(
-      (event) => !event.toLowerCase().includes('date') && !event.toLowerCase().includes('error')
+      (event) => !event.toLowerCase().startsWith('new date') && !event.toLowerCase().startsWith('new error')
     )
     if (!triggerRegisteredEvents || triggerRegisteredEvents.length === 0) {
       invalid = true
-      errorMessage += '\n✨ Trigger does not register any events'
+      errorMessage += `\n✨ Trigger '${util.toPascalCase(assertions.trigger.commandName)}' does not register any events`
     }
     if (triggerRegisteredEvents) {
       triggerRegisteredEvents = triggerRegisteredEvents.map((event) => event.replace(/new/g, '').trim())
@@ -255,7 +255,7 @@ export const confirmProcessFiles = async (
     if (entityFileExists) {
       const entityFile = fs.readFileSync(entityFilePath, 'utf8')
       const entityConstructorLines = entityFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
-      const entityConstructorFieldNames = entityConstructorLines[0].match(/(?<=public |readonly )(.*)(?=:)/g)
+      const entityConstructorFieldNames = entityConstructorLines[0].match(/(?<=public |readonly )(\w*)/g)
       const entityFields = entity.fields.map((field) => field)
       const entityFieldNames = entity.fields.map((field) => field.fieldName) as string[]
       const missingFields = entityFieldNames.filter((fieldName) => !entityConstructorFieldNames.includes(fieldName))
@@ -341,7 +341,7 @@ export const confirmProcessFiles = async (
     if (readModelFileExists) {
       const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
       const readModelConstructorLines = readModelFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
-      const readModelConstructorFieldNames = readModelConstructorLines[0].match(/(?<=public |readonly )(.*)(?=:)/g)
+      const readModelConstructorFieldNames = readModelConstructorLines[0].match(/(?<=public |readonly )(\w*)/g)
       const readModelFields = readModel.fields.map((value) => value)
       const readModelFieldNames = readModel.fields.map((value) => value.fieldName) as string[]
       const missingFields = readModelFieldNames.filter(
