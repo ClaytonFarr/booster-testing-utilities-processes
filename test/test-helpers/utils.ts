@@ -142,6 +142,8 @@ export const valueIsTypeKeyword = (val: unknown): boolean => {
   return check
 }
 
+export const hasDuplicates = (array: string[]): boolean => new Set(array).size !== array.length
+
 export const convertObjectToJsonString = (obj: Record<string, unknown>, wrapInBrackets = true): string => {
   let json = wrapInBrackets ? '{ ' : ''
   for (const key in obj) {
