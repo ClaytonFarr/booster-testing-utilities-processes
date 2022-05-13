@@ -1,5 +1,5 @@
 import type { Process } from './types'
-import * as utils from './utils'
+import * as util from './utils'
 
 export const validateProcessAssertions = (process: Process): boolean | string => {
   let allScenariosAreNamed = false
@@ -35,6 +35,14 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
     invalid = true
     errorMessage += '\n- Scenario: one or more scenario names are blank'
   }
+
+  // ✅ validate all scenarios have unique names
+  const scenarioNames = process.scenarios.map((scenario) => scenario.name)
+  if (util.hasDuplicates(scenarioNames)) {
+    invalid = true
+    errorMessage += '\n- Scenario: one or more scenarios have duplicate names'
+  }
+
   if (process.scenarios.every((scenario) => scenario.name)) allScenariosAreNamed = true
 
   const scenarioErrorMessages: string[] = []
@@ -57,6 +65,31 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
         }
       }
 
+      // ✅ if present, validate scenario[i].precedingActions[i]
+      if (scenario.precedingActions) {
+        for (const action of scenario.precedingActions) {
+          // ✅ validate commandName is not blank
+          if (!action.commandName) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += '\n- A preceding action has a blank command name'
+          }
+          // ✅ validate inputs are present
+          if (action.commandName && action.inputs.length === 0) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n- The preceding action for '${util.toPascalCase(
+              action.commandName
+            )}' has no inputs`
+          }
+          // ✅ validate authorization is not empty
+          if (action.authorized.length === 0) {
+            thisScenarioHasErrors = true
+            thisScenarioErrorMessages += `\n- The preceding action for '${util.toPascalCase(
+              action.commandName
+            )}' has no authorized roles`
+          }
+        }
+      }
+
       // ✅ validate scenario state update(s) are present
       if (!scenario.shouldBeRejected && scenario.expectedStateUpdates.length === 0) {
         thisScenarioHasErrors = true
@@ -74,7 +107,7 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
           // ✅ validate scenario[i].expectedStateUpdates[i] has values or notValues data present
           if (!expectedStateUpdate.values && !expectedStateUpdate.notValues) {
             thisScenarioHasErrors = true
-            thisScenarioErrorMessages += `\n- State update for '${utils.toPascalCase(
+            thisScenarioErrorMessages += `\n- State update for '${util.toPascalCase(
               expectedStateUpdate.entityName
             )}' needs \`values\` or \`notValues\``
           }
@@ -82,7 +115,7 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
           // ✅ validate scenario[i].expectedStateUpdates[i].values is not empty (if present)
           if (expectedStateUpdate.values && expectedStateUpdate.values.length === 0) {
             thisScenarioHasErrors = true
-            thisScenarioErrorMessages += `\n- State update for '${utils.toPascalCase(
+            thisScenarioErrorMessages += `\n- State update for '${util.toPascalCase(
               expectedStateUpdate.entityName
             )}' \`values\` expectations is empty`
           }
@@ -90,7 +123,7 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
           // ✅ validate scenario[i].expectedStateUpdates[i].notValues is not empty (if present)
           if (expectedStateUpdate.notValues && expectedStateUpdate.notValues.length === 0) {
             thisScenarioHasErrors = true
-            thisScenarioErrorMessages += `\n- State update for '${utils.toPascalCase(
+            thisScenarioErrorMessages += `\n- State update for '${util.toPascalCase(
               expectedStateUpdate.entityName
             )}' \`notValues\` expectations is empty`
           }
@@ -128,7 +161,7 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
           // ✅ validate scenario[i].expectedVisibleUpdates[i] has values or notValues data present
           if (!expectedVisibleUpdate.values && !expectedVisibleUpdate.notValues) {
             thisScenarioHasErrors = true
-            thisScenarioErrorMessages += `\n- Visible update for '${utils.toPascalCase(
+            thisScenarioErrorMessages += `\n- Visible update for '${util.toPascalCase(
               expectedVisibleUpdate.readModelName
             )}' needs \`values\` or \`notValues\``
           }
@@ -144,7 +177,7 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
           // ✅ validate scenario[i].expectedVisibleUpdates[i].values is not empty, if present
           if (expectedVisibleUpdate.values && expectedVisibleUpdate.values.length === 0) {
             thisScenarioHasErrors = true
-            thisScenarioErrorMessages += `\n- Visible update for '${utils.toPascalCase(
+            thisScenarioErrorMessages += `\n- Visible update for '${util.toPascalCase(
               expectedVisibleUpdate.readModelName
             )}' \`values\` expectations is empty`
           }
@@ -152,7 +185,7 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
           // ✅ validate scenario[i].expectedVisibleUpdates[i].notValues is not empty, if present
           if (expectedVisibleUpdate.notValues && expectedVisibleUpdate.notValues.length === 0) {
             thisScenarioHasErrors = true
-            thisScenarioErrorMessages += `\n- Visible update for '${utils.toPascalCase(
+            thisScenarioErrorMessages += `\n- Visible update for '${util.toPascalCase(
               expectedVisibleUpdate.readModelName
             )}' \`notValues\` expectations is empty`
           }
@@ -180,7 +213,7 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
           // ✅ validate scenario[i].expectedVisibleUpdates[i].authorized is not empty, if present
           if (!expectedVisibleUpdate.authorized || expectedVisibleUpdate.authorized.length === 0) {
             thisScenarioHasErrors = true
-            thisScenarioErrorMessages += `\n- Visible update for '${utils.toPascalCase(
+            thisScenarioErrorMessages += `\n- Visible update for '${util.toPascalCase(
               expectedVisibleUpdate.readModelName
             )}' has no authorization defined`
           }
@@ -188,7 +221,7 @@ export const validateProcessAssertions = (process: Process): boolean | string =>
           // ✅ validate scenario[i].expectedVisibleUpdates[i].authorized is an array if value is not 'all'
           if (typeof expectedVisibleUpdate.authorized === 'string' && expectedVisibleUpdate.authorized !== 'all') {
             thisScenarioHasErrors = true
-            thisScenarioErrorMessages += `\n- Visible update for '${utils.toPascalCase(
+            thisScenarioErrorMessages += `\n- Visible update for '${util.toPascalCase(
               expectedVisibleUpdate.readModelName
             )}' roles should be inside an array`
           }

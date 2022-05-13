@@ -15,21 +15,26 @@ export interface ScheduledCommand {
 export interface StateUpdate {
   entityName: string
   values?: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>
-  notValues?: Record<string, string | number | boolean | UUID> // values that should not be present in state update
+  notValues?: Record<string, string | number | boolean | UUID> // values that should NOT be present in state update
 }
 export interface VisibleUpdate {
   readModelName: string
   values?: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>
-  notValues?: Record<string, string | number | boolean | UUID> // values that should not be visible
+  notValues?: Record<string, string | number | boolean | UUID> // values that should NOT be visible
   authorized: string[] | string
+}
+export interface PrecedingAction {
+  commandName: string
+  inputs: Record<string, string | number | boolean | UUID> // inputs are only present on Actor Commands
+  authorized: 'all' | string[]
 }
 export interface Scenario {
   name: string
-  inputs?: Record<string, string | number | boolean | UUID> // inputs are only present on Actor Commands
+  inputs: Record<string, string | number | boolean | UUID> // inputs are only present on Actor Commands
+  precedingActions?: PrecedingAction[] // optional commands to call before scenario inputs to achieve correct state
   shouldBeRejected?: boolean // e.g. if scenario is invalid, confirm it should be rejected/receive error from application
   expectedStateUpdates: StateUpdate[]
-  expectedVisibleUpdates?: VisibleUpdate[] // a scenario may not have any visible updates
-  // LATER: possibly add 'none' option to expectedStateUpdates and expectedVisibleUpdates
+  expectedVisibleUpdates?: VisibleUpdate[] // optional, a scenario may not have any visible updates
 }
 export interface Process {
   name: string

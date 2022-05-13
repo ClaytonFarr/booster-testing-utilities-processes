@@ -17,6 +17,9 @@ export const testProcessExpectations = async (
   let invalid = false
   let errorMessage = ''
 
+  // ! update for preceding actions, for each scenario PA:
+  // - add correct calls to PA command(s)
+
   // Confirm assertions data present
   // ===============================================================================================
   const expectedAssertionGroups = ['roles', 'allInputs', 'allEntities']
@@ -29,7 +32,7 @@ export const testProcessExpectations = async (
   // Gather Assertions
   // ===============================================================================================
   const scenarios = assertions.scenarios
-  const authorizedSubmitRoles = assertions.roles.write
+  const authorizedSubmitRoles = assertions.roles.triggerWrite
   const commandName = assertions.trigger.commandName
   const isActorCommand = assertions.trigger.type === 'ActorCommand'
   const inputAssertions = assertions.allInputs

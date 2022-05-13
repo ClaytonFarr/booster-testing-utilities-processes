@@ -21,6 +21,14 @@ export const confirmProcessFiles = async (
   let invalid = false
   let errorMessage = ''
 
+  // ! update for preceding actions, for each scenario PA:
+  // - check if role exists in role file
+  // - check if command file exists
+  // - check if command file has matching auth
+  // - check if command file inputs & input types match assertions
+  // - check if command file register any events
+  // - check if registered event file(s) exist
+
   // Confirm assertions data present
   // -----------------------------------------------------------------------------------------------
   const expectedAssertionGroups = ['roles', 'allInputs', 'allEntities']
@@ -32,7 +40,7 @@ export const confirmProcessFiles = async (
 
   // 🔑🔑🔑 ROLES 🔑🔑🔑
   // ======================================================================================
-  const writeRoles = assertions.roles.write
+  const writeRoles = assertions.roles.triggerWrite
   const allRoles = assertions.roles.all
 
   // 🔑 Confirm ROLES FILE exists, if needed
