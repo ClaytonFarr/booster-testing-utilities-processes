@@ -142,6 +142,21 @@ export const valueIsTypeKeyword = (val: unknown): boolean => {
   return check
 }
 
+export const authIncludesAll = (auth: string | string[]): boolean => {
+  let check: boolean
+  if (typeof auth === 'string') check = auth.toLowerCase() === 'all'
+  if (typeof auth !== 'string') check = auth.join('|').toLowerCase().includes('all')
+  return check
+}
+
+export const gatherRoles = (auth: string | string[]): string[] => {
+  let roles: string[]
+  if (authIncludesAll(auth)) roles = ['all']
+  if (typeof auth === 'string' && !authIncludesAll(auth)) roles.push(toPascalCase(auth))
+  if (typeof auth !== 'string' && !authIncludesAll(auth)) roles = auth.map((role) => toPascalCase(role))
+  return roles
+}
+
 export const hasDuplicates = (array: string[]): boolean => new Set(array).size !== array.length
 
 export const convertObjectToJsonString = (obj: Record<string, unknown>, wrapInBrackets = true): string => {

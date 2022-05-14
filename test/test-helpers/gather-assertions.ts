@@ -1,7 +1,7 @@
 import * as types from './types'
 import * as util from './helpers-utils'
 
-export const gatherProcessAssertions = (process: types.Process): types.Assertions => {
+export const gatherAssertions = (process: types.Process): types.Assertions => {
   // ======================================================================================
 
   // ⏩ Pass-thru TRIGGER information
@@ -28,6 +28,8 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
     scenarioInfo.push({
       name: scenario.name,
       inputs: scenario.inputs,
+      precedingActions: scenario.precedingActions,
+      shouldBeRejected: scenario.shouldBeRejected,
       expectedStateUpdates: scenario.expectedStateUpdates,
       expectedVisibleUpdates: scenario.expectedVisibleUpdates,
     })
@@ -37,32 +39,14 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
   // ======================================================================================
   // ...gather write roles if an actor command (trigger will have either 'all' OR one or more roles)
   let triggerWriteRoles: string[] = []
-  if (process.trigger.type === 'ActorCommand') {
-    let triggerAuthIncludesAll: boolean
-    if (typeof process.trigger.authorized === 'string')
-      triggerAuthIncludesAll = process.trigger.authorized.toLowerCase() === 'all'
-    if (typeof process.trigger.authorized !== 'string')
-      triggerAuthIncludesAll = process.trigger.authorized.join('|').toLowerCase().includes('all')
-    if (triggerAuthIncludesAll) triggerWriteRoles = ['all']
-    if (typeof process.trigger.authorized === 'string' && !triggerAuthIncludesAll)
-      triggerWriteRoles.push(util.toPascalCase(process.trigger.authorized))
-    if (typeof process.trigger.authorized !== 'string' && !triggerAuthIncludesAll)
-      triggerWriteRoles = process.trigger.authorized.map((role) => util.toPascalCase(role))
-  }
+  if (process.trigger.type === 'ActorCommand') triggerWriteRoles = util.gatherRoles(process.trigger.authorized)
   // ...gather any write roles across scenario preceding actions
   let paWriteRoles: string[] = []
   for (const scenario of process.scenarios) {
     if (scenario.precedingActions) {
       for (const action of scenario.precedingActions) {
-        let actionAuthIncludesAll: boolean
-        if (typeof action.authorized === 'string') actionAuthIncludesAll = action.authorized.toLowerCase() === 'all'
-        if (typeof action.authorized !== 'string')
-          actionAuthIncludesAll = action.authorized.join('|').toLowerCase().includes('all')
-        if (actionAuthIncludesAll) paWriteRoles = ['all']
-        if (typeof action.authorized === 'string' && !actionAuthIncludesAll)
-          paWriteRoles.push(util.toPascalCase(action.authorized))
-        if (typeof action.authorized !== 'string' && !actionAuthIncludesAll)
-          paWriteRoles = action.authorized.map((role) => util.toPascalCase(role))
+        const paWriteRolesSet = util.gatherRoles(action.authorized)
+        paWriteRoles = paWriteRoles.concat(paWriteRolesSet)
       }
     }
   }
@@ -72,19 +56,12 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
   for (const scenario of process.scenarios) {
     if (scenario.expectedVisibleUpdates) {
       for (const expectedVisibleUpdate of scenario.expectedVisibleUpdates) {
-        if (
-          typeof expectedVisibleUpdate.authorized === 'string' ||
-          expectedVisibleUpdate.authorized[0].toLowerCase() === 'all'
-        )
-          readRoles = ['all']
-        if (typeof expectedVisibleUpdate.authorized !== 'string') {
-          for (const role of expectedVisibleUpdate.authorized) {
-            if (!readRoles.includes(role)) readRoles.push(util.toPascalCase(role))
-          }
-        }
+        const readRolesSet = util.gatherRoles(expectedVisibleUpdate.authorized)
+        readRoles = readRoles.concat(readRolesSet)
       }
     }
   }
+  readRoles = [...new Set(readRoles)] // remove duplicates
   const allRoles: string[] = [...new Set([...triggerWriteRoles, ...paWriteRoles, ...readRoles])]
   const roles = {
     triggerWrite: triggerWriteRoles.sort(),
@@ -143,7 +120,7 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
         for (const [key, value] of Object.entries(action.inputs)) {
           paInputs.push({
             name: util.toCamelCase(key),
-            types: util.inferValueType(value as string),
+            types: [util.inferValueType(value as string)],
           })
         }
         precedingAction.inputs = paInputs
@@ -285,6 +262,7 @@ export const gatherProcessAssertions = (process: types.Process): types.Assertion
   // Return assertions data
   // ======================================================================================
   return {
+    processName: process.name,
     trigger: triggerInfo,
     scenarios: scenarioInfo,
     roles,

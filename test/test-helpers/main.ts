@@ -1,18 +1,21 @@
 import type { Process, Assertions } from './types'
-import { validateProcessAssertions } from './validate-process'
-import { gatherProcessAssertions } from './gather-assertions'
-import { confirmProcessFiles } from './confirm-files'
-import { testProcessExpectations } from './confirm-assertions'
+import { validateProcessInputs } from './validate-process'
+import { gatherAssertions } from './gather-assertions'
+import { confirmFiles } from './confirm-files'
+import { confirmAssertions } from './confirm-assertions'
 import { describe, it, expect } from 'vitest'
+import * as settings from './settings'
 
 // ======================================================================================
 
 export const testProcess = (process: Process): void => {
+  const filePaths = settings.filePaths
+
   describe(`Process: '${process.name}'`, async () => {
     let testMessage = ''
 
     // 1. Validate process inputs
-    const validInputCheck = validateProcessAssertions(process)
+    const validInputCheck = validateProcessInputs(process)
     const validInputPass = validInputCheck === true ? true : false
     if (typeof validInputCheck === 'string') testMessage = validInputCheck
     it('Should have valid assertions for scenario(s)', async () => {
@@ -21,7 +24,7 @@ export const testProcess = (process: Process): void => {
 
     // 2. Gather assertions from process
     let processAssertions: Assertions
-    if (validInputCheck === true) processAssertions = gatherProcessAssertions(process)
+    if (validInputCheck === true) processAssertions = gatherAssertions(process)
 
     // 3. Confirm application files needed exist and are well-formed
     //    - will default to checking files unless process.confirmFiles explicitly set to false
@@ -29,7 +32,7 @@ export const testProcess = (process: Process): void => {
     let filesPresentCheck: string | boolean
     let filesPresentPass: boolean
     if (validInputCheck === true && checkFiles) {
-      filesPresentCheck = await confirmProcessFiles(process, processAssertions)
+      filesPresentCheck = await confirmFiles(processAssertions, filePaths)
       filesPresentPass = filesPresentCheck === true ? true : false
       if (typeof filesPresentCheck === 'string') testMessage += filesPresentCheck
       it('Should have all files for scenario(s)', async () => {
@@ -37,11 +40,11 @@ export const testProcess = (process: Process): void => {
       })
     }
 
-    // 4. Test if process expectations are met by application
+    // 4. Test if process assertions are met by application
     let expectationsCheck: string | boolean
     let expectationsPass: boolean
     if (validInputCheck === true && filesPresentCheck === true) {
-      expectationsCheck = await testProcessExpectations(process, processAssertions)
+      expectationsCheck = await confirmAssertions(processAssertions, filePaths)
       expectationsPass = expectationsCheck === true ? true : false
       if (typeof expectationsCheck === 'string') testMessage += expectationsCheck
       it('Should meet all scenario expectations', async () => {

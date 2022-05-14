@@ -1,7 +1,7 @@
 import type { Process } from './types'
 import * as util from './helpers-utils'
 
-export const validateProcessAssertions = (process: Process): boolean | string => {
+export const validateProcessInputs = (process: Process): boolean | string => {
   let allScenariosAreNamed = false
   let invalid = false
   let errorMessage = ''

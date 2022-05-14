@@ -1,33 +1,17 @@
-import type { Process, Assertions, AssertionValue } from './types'
+import type { Assertions, AssertionValue } from './types'
 import * as util from './helpers-utils'
 import fs from 'fs'
 
 // ======================================================================================
 
-export const confirmProcessFiles = async (
-  process: Process,
+export const confirmFiles = async (
   assertions: Assertions,
-  filePaths?: Record<string, string>
+  filePaths: Record<string, string>
 ): Promise<string | boolean> => {
-  const path = {
-    commandsDirectoryPath: filePaths?.commandsDirectoryPath ?? 'src/commands',
-    scheduledCommandsDirectoryPath: filePaths?.scheduledCommandsDirectoryPath ?? 'src/scheduled-commands',
-    eventHandlersDirectoryPath: filePaths?.eventHandlersDirectoryPath ?? 'src/event-handlers',
-    eventsDirectoryPath: filePaths?.eventsDirectoryPath ?? 'src/events',
-    entitiesDirectoryPath: filePaths?.entitiesDirectoryPath ?? 'src/entities',
-    readModelsDirectoryPath: filePaths?.readModelsDirectoryPath ?? 'src/read-models',
-    rolesPath: filePaths?.rolesPath ?? 'src/roles.ts',
-  }
+  const processName = assertions.processName
+  const path = filePaths
   let invalid = false
   let errorMessage = ''
-
-  // ! update for preceding actions, for each scenario PA:
-  // - check if role exists in role file
-  // - check if command file exists
-  // - check if command file has matching auth
-  // - check if command file inputs & input types match assertions
-  // - check if command file register any events
-  // - check if registered event file(s) exist
 
   // Confirm assertions data present
   // -----------------------------------------------------------------------------------------------
@@ -36,7 +20,7 @@ export const confirmProcessFiles = async (
     Object.keys(assertions).length === 0 ||
     !expectedAssertionGroups.every((key) => Object.keys(assertions).includes(key))
   )
-    return `\n\n'${process.name}' File Issue\n=====================================================================\nAssertions data missing or incomplete`
+    return `\n\n'${processName}' File Issue\n=====================================================================\nAssertions data missing or incomplete`
 
   // 🔑🔑🔑 ROLES 🔑🔑🔑
   // ======================================================================================
@@ -52,8 +36,8 @@ export const confirmProcessFiles = async (
       errorMessage += `\n🔑 Roles file missing: '${rolesFilePath}'`
     }
 
-    // 🔑 confirm roles.ts contains necessary ROLE DEFINITIONS
     if (rolesFileExists) {
+      // 🔑 confirm roles.ts contains necessary ROLE DEFINITIONS
       if (allRoles.length > 0 && !allRoles.includes('all')) {
         const rolesFile = fs.readFileSync(rolesFilePath, 'utf8')
         const rolesFileLines = rolesFile.split('\n')
@@ -72,11 +56,12 @@ export const confirmProcessFiles = async (
 
   // ✨✨✨ TRIGGER ✨✨✨
   // ======================================================================================
+  // LATER: convert  similar work between trigger and preceding actions into reusable functions
 
   // ✨ Confirm TRIGGER FILE exists
   const triggerFileDirectory =
-    process.trigger.type === 'ActorCommand' ? path.commandsDirectoryPath : path.scheduledCommandsDirectoryPath
-  const triggerFileName = util.toKebabCase(process.trigger.commandName)
+    assertions.trigger.type === 'ActorCommand' ? path.commandsDirectoryPath : path.scheduledCommandsDirectoryPath
+  const triggerFileName = util.toKebabCase(assertions.trigger.commandName)
   const triggerFileExists = fs.existsSync(`${triggerFileDirectory}/${triggerFileName}.ts`)
   if (!triggerFileExists) {
     invalid = true
@@ -86,7 +71,7 @@ export const confirmProcessFiles = async (
   if (triggerFileExists) triggerFile = fs.readFileSync(`${triggerFileDirectory}/${triggerFileName}.ts`, 'utf8')
 
   // ✨ Confirm trigger has correct AUTHORIZATION
-  if (triggerFile && process.trigger.type === 'ActorCommand') {
+  if (triggerFile && assertions.trigger.type === 'ActorCommand') {
     // evaluate trigger file for asserted roles
     let triggerAuthorizationString = triggerFile.match(/authorize: (.*)/g)[0].replace(/authorize: /g, '')
     triggerAuthorizationString = triggerAuthorizationString.slice(0, -1) // remove trailing comma
@@ -132,7 +117,7 @@ export const confirmProcessFiles = async (
     // alert if trigger has no inputs defined
     if (!triggerInputs || triggerInputs.length === 0) {
       let expectedInputNames = []
-      for (const scenario of process.scenarios) {
+      for (const scenario of assertions.scenarios) {
         if (scenario.inputs)
           for (const [key] of Object.entries(scenario.inputs)) expectedInputNames.push(util.toCamelCase(key))
       }
@@ -194,7 +179,7 @@ export const confirmProcessFiles = async (
       if (missingInputs && missingInputs.length > 0) {
         invalid = true
         for (const missingInput of missingInputs) {
-          errorMessage += `\n✨ Trigger is missing input: ${missingInput.name} (${missingInput.type.join('|')})`
+          errorMessage += `\n✨ Trigger is missing input(s): ${missingInput.name} (${missingInput.type.join(', ')})`
         }
       }
       // alert if any inputs are mismatched
@@ -203,7 +188,7 @@ export const confirmProcessFiles = async (
         for (const incorrectTypeInput of incorrectTypeInputs) {
           errorMessage += `\n✨ Trigger missing type${incorrectTypeInput.type.length > 1 ? 's' : ''} for ${
             incorrectTypeInput.name
-          } (missing ${incorrectTypeInput.type.join('|')})`
+          } (${incorrectTypeInput.type.join(', ')})`
         }
       }
       // alert if any inputs required status is mismatched
@@ -237,8 +222,167 @@ export const confirmProcessFiles = async (
     }
   }
 
+  // ⏪⏪⏪ PRECEDING ACTIONS ⏪⏪⏪
+  // ======================================================================================
+  for (const actionSet of assertions.precedingActions) {
+    for (const action of actionSet.actions) {
+      //
+      // ⏪ Confirm preceding action command file exists
+      const paCommandFileName = util.toKebabCase(action.commandName)
+      const paCommandFileExists = fs.existsSync(`${path.commandsDirectoryPath}/${paCommandFileName}.ts`)
+      if (!paCommandFileExists) {
+        invalid = true
+        errorMessage += `\n⏪ Preceding action command file missing: '${path.commandsDirectoryPath}/${paCommandFileName}.ts'`
+      }
+      let paCommandFile: string
+      if (paCommandFileExists)
+        paCommandFile = fs.readFileSync(`${path.commandsDirectoryPath}/${paCommandFileName}.ts`, 'utf8')
+
+      // ⏪ Confirm preceding action command has correct AUTHORIZATION
+      if (paCommandFile) {
+        // evaluate command file for asserted roles
+        let paCommandAuthorizationString = paCommandFile.match(/authorize: (.*)/g)[0].replace(/authorize: /g, '')
+        paCommandAuthorizationString = paCommandAuthorizationString.slice(0, -1) // remove trailing comma
+        const paCommandHasAuthorization =
+          paCommandAuthorizationString.startsWith("'all'") || paCommandAuthorizationString.startsWith('[')
+            ? true
+            : false
+        let paCommandHasCorrectAuthorization: boolean
+        if (paCommandHasAuthorization) {
+          if (writeRoles.length === 0)
+            paCommandHasCorrectAuthorization = paCommandAuthorizationString.startsWith("'all'")
+          if (writeRoles.length > 0) {
+            let paCommandFileRoles = paCommandAuthorizationString.replace(/\[|\]|'/g, '').split(',')
+            paCommandFileRoles = paCommandFileRoles.map((role: string) => role.trim())
+            paCommandHasCorrectAuthorization = writeRoles.every((role: string) => paCommandFileRoles.includes(role))
+          }
+        }
+        const expectedWriteRoles = writeRoles.length === 0 ? "'all'" : writeRoles.join(', ')
+        // alert if command missing any authorization definition
+        if (!paCommandHasAuthorization) {
+          invalid = true
+          errorMessage += `\n⏪ Command '${util.toPascalCase(
+            action.commandName
+          )}' does not have authorization defined (expecting ${expectedWriteRoles})`
+        }
+        // alert if command missing correct authorization definition
+        if (paCommandHasAuthorization && !paCommandHasCorrectAuthorization) {
+          invalid = true
+          errorMessage += `\n⏪ Command '${util.toPascalCase(
+            action.commandName
+          )}' does not have correct authorization (expecting ${expectedWriteRoles})`
+        }
+      }
+
+      // ⏪ Confirm that PA command INPUTS and INPUT TYPES match preceding action assertions
+      const paInputs = action.inputs
+      const commandInputs = []
+      if (paCommandFile) {
+        // gather command inputs
+        const commandInputsArray = [...paCommandFile.matchAll(/readonly ([a-zA-Z?]+):\s*(.+)/g)]
+        commandInputsArray.forEach((input) => {
+          let inputTypes = input[2].replace(/,|\/\/.*/g, '').split(' | ')
+          inputTypes = inputTypes.map((type) => type.trim())
+          commandInputs.push({
+            name: input[1].replace(/\?/g, ''),
+            type: inputTypes,
+            required: input[1].includes('?') ? false : true,
+          })
+        })
+        // alert if PA command has no inputs defined
+        if (!commandInputs || commandInputs.length === 0) {
+          const expectedInputNames = paInputs.map((input) => input.name).join(', ')
+          invalid = true
+          errorMessage += `\n⏪ Command '${util.toPascalCase(
+            action.commandName
+          )}' does not have any inputs defined (expecting ${expectedInputNames})`
+        }
+
+        if (commandInputs && commandInputs.length > 0) {
+          // determine which preceding action asserted inputs are missing from PA command inputs
+          const missingInputs = []
+          for (const paInput of paInputs) {
+            const commandInput = commandInputs.find((input) => input.name === paInput.name)
+            if (!commandInput) {
+              missingInputs.push({
+                name: paInput.name,
+                types: paInput.types,
+              })
+            }
+          }
+          // determine if PA command inputs have different (or incomplete) types from scenario inputs
+          const incorrectTypeInputs = []
+          for (const commandInput of commandInputs) {
+            const matchingPaInputs = paInputs.filter((input) => input.name === commandInput.name)
+            for (const paInput of matchingPaInputs) {
+              for (const inputType of paInput.types) {
+                if (!commandInput.type.includes(inputType)) {
+                  incorrectTypeInputs.forEach((input) => {
+                    if (input.name === paInput.name) input.type.push(inputType)
+                  })
+                  if (!incorrectTypeInputs.some((input) => input.name === paInput.name))
+                    incorrectTypeInputs.push({
+                      name: paInput.name,
+                      type: [inputType],
+                    })
+                }
+              }
+            }
+          }
+          // alert if any inputs are missing
+          if (missingInputs && missingInputs.length > 0) {
+            invalid = true
+            for (const missingInput of missingInputs) {
+              errorMessage += `\n⏪ Command '${util.toPascalCase(action.commandName)}' is missing input(s): ${
+                missingInput.name
+              } (${missingInput.type.join(', ')})`
+            }
+          }
+          // alert if any inputs are mismatched
+          if (incorrectTypeInputs && incorrectTypeInputs.length > 0) {
+            invalid = true
+            for (const incorrectTypeInput of incorrectTypeInputs) {
+              errorMessage += `\n⏪ Command '${util.toPascalCase(action.commandName)}' missing type${
+                incorrectTypeInput.type.length > 1 ? 's' : ''
+              } for ${incorrectTypeInput.name} (${incorrectTypeInput.type.join(', ')})`
+            }
+          }
+        }
+      }
+
+      // ⏪ Confirm preceding action command REGISTERS at least one event
+      let commandRegisteredEvents: string[] = []
+      if (paCommandFile) {
+        commandRegisteredEvents = paCommandFile.match(/(?<!\/\/.*)new (\w+)/gm) // a little brittle, but works for now
+        commandRegisteredEvents = commandRegisteredEvents?.filter(
+          (event) => !event.toLowerCase().startsWith('new date') && !event.toLowerCase().startsWith('new error')
+        )
+        if (!commandRegisteredEvents || commandRegisteredEvents.length === 0) {
+          invalid = true
+          errorMessage += `\n⏪ Command '${util.toPascalCase(action.commandName)}' does not register any events`
+        }
+        if (commandRegisteredEvents) {
+          commandRegisteredEvents = commandRegisteredEvents.map((event) => event.replace(/new/g, '').trim())
+        }
+      }
+
+      // ⏪ Confirm if EVENT FILES registered by trigger exist
+      if (commandRegisteredEvents) {
+        commandRegisteredEvents.forEach((eventName) => {
+          const eventFileName = util.toKebabCase(eventName)
+          if (!fs.existsSync(`${path.eventsDirectoryPath}/${eventFileName}.ts`)) {
+            invalid = true
+            errorMessage += `\n🚀 Preceding action event file missing: '${path.eventsDirectoryPath}/${eventFileName}.ts'`
+          }
+        })
+      }
+    }
+  }
+
   // 👽👽👽 ENTITIES 👽👽👽
   // ======================================================================================
+  // LATER: convert similar work between entities and read models into reusable functions
+
   const scenarioEntities = assertions.allEntities
 
   // 👽 Confirm ENTITY FILES exist for all scenario[i].expectedStateUpdates[i].entityName values
@@ -577,7 +721,7 @@ export const confirmProcessFiles = async (
   if (invalid && errorMessage.length > 0) {
     // alphabetize error messages
     errorMessage = errorMessage.split('\n').sort().join('\n')
-    const errorMessageHeading = `\n\n'${process.name}' File Issues\n=====================================================================`
+    const errorMessageHeading = `\n\n'${processName}' File Issues\n=====================================================================`
     // prepend heading to error messages
     errorMessage = `${errorMessageHeading}\n${errorMessage}`
   }
