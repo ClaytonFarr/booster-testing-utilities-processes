@@ -1,11 +1,11 @@
 import type { EventEnvelope } from '@boostercloud/framework-types'
 import type { FetchResult } from 'apollo-link'
-import { applicationUnderTest, unAuthGraphQLclient, authGraphQLclient } from './infrastructure'
+import { applicationUnderTest, unAuthGraphQLclient, authGraphQLclient } from './helpers-infrastructure'
 import { faker } from '@faker-js/faker'
-import * as command from './command-helpers'
-import * as readModel from './readmodel-helpers'
+import * as command from './helpers-command'
+import * as readModel from './helpers-readmodel'
+import * as util from './helpers-utils'
 import * as type from './types'
-import * as util from './utils'
 
 // ======================================================================================
 

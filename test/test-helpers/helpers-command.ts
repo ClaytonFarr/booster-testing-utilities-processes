@@ -1,6 +1,6 @@
 import type { DocumentNode } from 'graphql'
 import type { CommandInput } from './types'
-import { applicationUnderTest } from './infrastructure'
+import { applicationUnderTest } from './helpers-infrastructure'
 import { faker } from '@faker-js/faker'
 import gql from 'graphql-tag'
 

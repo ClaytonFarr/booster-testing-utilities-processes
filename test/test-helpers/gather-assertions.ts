@@ -1,5 +1,5 @@
 import * as types from './types'
-import * as util from './utils'
+import * as util from './helpers-utils'
 
 export const gatherProcessAssertions = (process: types.Process): types.Assertions => {
   // ======================================================================================

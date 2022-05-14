@@ -1,5 +1,5 @@
 import type { Process } from './types'
-import * as util from './utils'
+import * as util from './helpers-utils'
 
 export const validateProcessAssertions = (process: Process): boolean | string => {
   let allScenariosAreNamed = false

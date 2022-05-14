@@ -2,7 +2,7 @@ import type { UUID } from '@boostercloud/framework-types'
 import type { NormalizedCacheObject } from 'apollo-cache-inmemory'
 import type { ApolloClient } from 'apollo-client'
 import type { DocumentNode } from 'graphql'
-import * as util from './utils'
+import * as util from './helpers-utils'
 import gql from 'graphql-tag'
 
 // Read Model Queries

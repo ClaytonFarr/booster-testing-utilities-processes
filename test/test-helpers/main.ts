@@ -1,8 +1,8 @@
 import type { Process, Assertions } from './types'
-import { validateProcessAssertions } from './validate-assertions'
+import { validateProcessAssertions } from './validate-process'
 import { gatherProcessAssertions } from './gather-assertions'
 import { confirmProcessFiles } from './confirm-files'
-import { testProcessExpectations } from './confirm-expectations'
+import { testProcessExpectations } from './confirm-assertions'
 import { describe, it, expect } from 'vitest'
 
 // ======================================================================================
