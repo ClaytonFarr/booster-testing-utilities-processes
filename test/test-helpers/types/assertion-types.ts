@@ -30,6 +30,7 @@ export interface AssertionReadModel {
   authorized: 'all' | string[]
 }
 export interface Assertions {
+  processName: string
   trigger: ActorCommand | ScheduledCommand
   scenarios: Scenario[]
   roles: {
