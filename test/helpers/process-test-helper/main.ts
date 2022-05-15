@@ -10,13 +10,13 @@ import * as log from './reporter'
 
 export const testProcess = (process: Process, filePaths?: LocalBoosterFilePaths): void => {
   const useFilePaths: LocalBoosterFilePaths = {
-    commandsDirectoryPath: filePaths.commandsDirectoryPath ?? 'src/commands',
-    scheduledCommandsDirectoryPath: filePaths.scheduledCommandsDirectoryPath ?? 'src/scheduled-commands',
-    eventHandlersDirectoryPath: filePaths.eventHandlersDirectoryPath ?? 'src/event-handlers',
-    eventsDirectoryPath: filePaths.eventsDirectoryPath ?? 'src/events',
-    entitiesDirectoryPath: filePaths.entitiesDirectoryPath ?? 'src/entities',
-    readModelsDirectoryPath: filePaths.readModelsDirectoryPath ?? 'src/read-models',
-    rolesPath: filePaths.rolesPath ?? 'src/roles.ts',
+    commandsDirectoryPath: filePaths?.commandsDirectoryPath ?? 'src/commands',
+    scheduledCommandsDirectoryPath: filePaths?.scheduledCommandsDirectoryPath ?? 'src/scheduled-commands',
+    eventHandlersDirectoryPath: filePaths?.eventHandlersDirectoryPath ?? 'src/event-handlers',
+    eventsDirectoryPath: filePaths?.eventsDirectoryPath ?? 'src/events',
+    entitiesDirectoryPath: filePaths?.entitiesDirectoryPath ?? 'src/entities',
+    readModelsDirectoryPath: filePaths?.readModelsDirectoryPath ?? 'src/read-models',
+    rolesPath: filePaths?.rolesPath ?? 'src/roles.ts',
   }
 
   // Notes:
