@@ -5,53 +5,54 @@ import { confirmFiles } from './confirm-files'
 import { confirmAssertions } from './confirm-assertions'
 import { describe, it, expect } from 'vitest'
 import * as settings from './settings'
+import * as log from './reporter'
 
 // ======================================================================================
 
 export const testProcess = (process: Process): void => {
   const filePaths = settings.filePaths
 
+  // Notes:
+  // - `log` utility is used here and within methods to print issues/result messages
+  // - vitest is used as test runner (with HMR) and its methods used here to assert test results for CI
+
   describe(`Process: '${process.name}'`, async () => {
-    let testMessage = ''
+    log.processHeader(process.name)
 
     // 1. Validate process inputs
     const validInputCheck = validateProcessInputs(process)
     const validInputPass = validInputCheck === true ? true : false
-    if (typeof validInputCheck === 'string') testMessage = validInputCheck
-    it('Should have valid assertions for scenario(s)', async () => {
-      expect(validInputPass).toBe(true)
-    })
+
+    //
+    it('Has valid assertions for scenario(s)', async () => expect(validInputPass).toBe(true))
 
     // 2. Gather assertions from process
     let processAssertions: Assertions
-    if (validInputCheck === true) processAssertions = gatherAssertions(process)
+    if (validInputPass === true) processAssertions = gatherAssertions(process)
 
     // 3. Confirm application files needed exist and are well-formed
     //    - will default to checking files unless process.confirmFiles explicitly set to false
     const checkFiles = process.confirmFiles === false ? process.confirmFiles : true
-    let filesPresentCheck: string | boolean
+    let filesPresentCheck: boolean | string[]
     let filesPresentPass: boolean
-    if (validInputCheck === true && checkFiles) {
-      filesPresentCheck = await confirmFiles(processAssertions, filePaths)
+    if (validInputPass === true && checkFiles) {
+      filesPresentCheck = confirmFiles(processAssertions, filePaths)
       filesPresentPass = filesPresentCheck === true ? true : false
-      if (typeof filesPresentCheck === 'string') testMessage += filesPresentCheck
-      it('Should have all files for scenario(s)', async () => {
-        expect(filesPresentPass).toBe(true)
-      })
+
+      //
+      it('Has all files for scenario(s)', async () => expect(filesPresentPass).toBe(true))
     }
 
     // 4. Test if process assertions are met by application
-    let expectationsCheck: string | boolean
+    let expectationsCheck: boolean | string[]
     let expectationsPass: boolean
-    if (validInputCheck === true && filesPresentCheck === true) {
+    if (validInputPass === true && filesPresentCheck === true) {
       expectationsCheck = await confirmAssertions(processAssertions, filePaths)
       expectationsPass = expectationsCheck === true ? true : false
-      if (typeof expectationsCheck === 'string') testMessage += expectationsCheck
-      it('Should meet all scenario expectations', async () => {
-        expect(expectationsPass).toBe(true)
-      })
-    }
+      if (expectationsPass) log.testStepSuccessMessage('All process expectations were met')
 
-    console.log(testMessage)
+      //
+      it('Meets all scenario expectations', async () => expect(expectationsPass).toBe(true))
+    }
   })
 }

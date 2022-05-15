@@ -1,17 +1,15 @@
 import type { Assertions, AssertionValue } from './types'
+import { addMessage as msg, fileIssues as is } from './issue-messages'
 import * as util from './helpers-utils'
+import * as log from './reporter'
 import fs from 'fs'
 
-// ======================================================================================
+const confirmFilesLogHeader = (): void => log.issueGroupHeader(is.fileIssuesHeader)
 
-export const confirmFiles = async (
-  assertions: Assertions,
-  filePaths: Record<string, string>
-): Promise<string | boolean> => {
-  const processName = assertions.processName
+export const confirmFiles = (assertions: Assertions, filePaths: Record<string, string>): boolean | string[] => {
   const path = filePaths
   let invalid = false
-  let errorMessage = ''
+  const issues = []
 
   // Confirm assertions data present
   // -----------------------------------------------------------------------------------------------
@@ -19,8 +17,12 @@ export const confirmFiles = async (
   if (
     Object.keys(assertions).length === 0 ||
     !expectedAssertionGroups.every((key) => Object.keys(assertions).includes(key))
-  )
-    return `\n\n'${processName}' File Issue\n=====================================================================\nAssertions data missing or incomplete`
+  ) {
+    // if data missing skip rest of tests and return error here
+    confirmFilesLogHeader()
+    log.issueNote(is.assertionsDataMissing)
+    return false
+  }
 
   // 🔑🔑🔑 ROLES 🔑🔑🔑
   // ======================================================================================
@@ -32,8 +34,7 @@ export const confirmFiles = async (
     const rolesFilePath = path.rolesPath
     const rolesFileExists = fs.existsSync(rolesFilePath)
     if (!rolesFileExists) {
-      invalid = true
-      errorMessage += `\n🔑 Roles file missing: '${rolesFilePath}'`
+      issues.push(msg(is.rolesFileMissing), [rolesFilePath])
     }
 
     if (rolesFileExists) {
@@ -47,8 +48,7 @@ export const confirmFiles = async (
         if (Array.isArray(missingRoles) && missingRoles.length > 0) {
           const missingRolesPascalCase = missingRoles.map((role) => util.toPascalCase(role))
           const missingRolesUnique = [...new Set(missingRolesPascalCase)]
-          invalid = true
-          errorMessage += `\n🔑 Roles.ts file does not have roles: ${missingRolesUnique.join(', ')}`
+          issues.push(msg(is.rolesMissing), [missingRolesUnique.join(', ')])
         }
       }
     }
@@ -62,13 +62,13 @@ export const confirmFiles = async (
   const triggerFileDirectory =
     assertions.trigger.type === 'ActorCommand' ? path.commandsDirectoryPath : path.scheduledCommandsDirectoryPath
   const triggerFileName = util.toKebabCase(assertions.trigger.commandName)
-  const triggerFileExists = fs.existsSync(`${triggerFileDirectory}/${triggerFileName}.ts`)
+  const triggerFilePath = `${triggerFileDirectory}/${triggerFileName}.ts`
+  const triggerFileExists = fs.existsSync(triggerFilePath)
   if (!triggerFileExists) {
-    invalid = true
-    errorMessage += `\n✨ Trigger file missing: '${triggerFileDirectory}/${triggerFileName}.ts'`
+    issues.push(msg(is.triggerFileMissing), [triggerFilePath])
   }
   let triggerFile: string
-  if (triggerFileExists) triggerFile = fs.readFileSync(`${triggerFileDirectory}/${triggerFileName}.ts`, 'utf8')
+  if (triggerFileExists) triggerFile = fs.readFileSync(triggerFilePath, 'utf8')
 
   // ✨ Confirm trigger has correct AUTHORIZATION
   if (triggerFile && assertions.trigger.type === 'ActorCommand') {
@@ -89,13 +89,11 @@ export const confirmFiles = async (
     const expectedWriteRoles = writeRoles.length === 0 ? "'all'" : writeRoles.join(', ')
     // alert if trigger missing any authorization definition
     if (!triggerHasAuthorization) {
-      invalid = true
-      errorMessage += `\n✨ Trigger does not have authorization defined (expecting ${expectedWriteRoles})`
+      issues.push(msg(is.triggerAuthMissing), [expectedWriteRoles])
     }
     // alert if trigger missing correct authorization definition
     if (triggerHasAuthorization && !triggerHasCorrectAuthorization) {
-      invalid = true
-      errorMessage += `\n✨ Trigger does not have correct authorization (expecting ${expectedWriteRoles})`
+      issues.push(msg(is.triggerAuthIncorrect), [expectedWriteRoles])
     }
   }
 
@@ -122,8 +120,7 @@ export const confirmFiles = async (
           for (const [key] of Object.entries(scenario.inputs)) expectedInputNames.push(util.toCamelCase(key))
       }
       expectedInputNames = [...new Set(expectedInputNames)].sort()
-      invalid = true
-      errorMessage += `\n✨ Trigger does not have any inputs defined (expecting ${expectedInputNames.join(', ')})`
+      issues.push(msg(is.triggerInputsMissing), [expectedInputNames.join(', ')])
     }
 
     if (triggerInputs && triggerInputs.length > 0) {
@@ -177,28 +174,23 @@ export const confirmFiles = async (
       }
       // alert if any inputs are missing
       if (missingInputs && missingInputs.length > 0) {
-        invalid = true
         for (const missingInput of missingInputs) {
-          errorMessage += `\n✨ Trigger is missing input(s): ${missingInput.name} (${missingInput.type.join(', ')})`
+          issues.push(msg(is.triggerInputMissing), [missingInput.name, missingInput.type.join(', ')])
         }
       }
       // alert if any inputs are mismatched
       if (incorrectTypeInputs && incorrectTypeInputs.length > 0) {
-        invalid = true
         for (const incorrectTypeInput of incorrectTypeInputs) {
-          errorMessage += `\n✨ Trigger missing type${incorrectTypeInput.type.length > 1 ? 's' : ''} for ${
-            incorrectTypeInput.name
-          } (${incorrectTypeInput.type.join(', ')})`
+          issues.push(msg(is.triggerInputMissingTypes), [incorrectTypeInput.name, incorrectTypeInput.type.join(', ')])
         }
       }
       // alert if any inputs required status is mismatched
       if (incorrectRequiredInputs && incorrectRequiredInputs.length > 0) {
         for (const incorrectRequiredInput of incorrectRequiredInputs) {
           if (incorrectRequiredInput.name !== 'tid') {
-            invalid = true
-            errorMessage += `\n✨ Trigger input '${incorrectRequiredInput.name}' should be ${
-              incorrectRequiredInput.expectedRequire ? 'required' : 'optional'
-            } (is ${incorrectRequiredInput.triggerRequire ? 'required' : 'optional'})`
+            const expectedRequire = incorrectRequiredInput.expectedRequire ? 'required' : 'optional'
+            const triggerFileRequire = incorrectRequiredInput.triggerRequire ? 'required' : 'optional'
+            issues.push(msg(is.triggerInputRequireIncorrect), [expectedRequire, triggerFileRequire])
           }
         }
       }
@@ -214,8 +206,7 @@ export const confirmFiles = async (
       (event) => !event.toLowerCase().startsWith('new date') && !event.toLowerCase().startsWith('new error')
     )
     if (!triggerRegisteredEvents || triggerRegisteredEvents.length === 0) {
-      invalid = true
-      errorMessage += `\n✨ Trigger '${util.toPascalCase(assertions.trigger.commandName)}' does not register any events`
+      issues.push(msg(is.triggerCommandNoEvents), [util.toPascalCase(assertions.trigger.commandName)])
     }
     if (triggerRegisteredEvents) {
       triggerRegisteredEvents = triggerRegisteredEvents.map((event) => event.replace(/new/g, '').trim())
@@ -226,17 +217,17 @@ export const confirmFiles = async (
   // ======================================================================================
   for (const actionSet of assertions.precedingActions) {
     for (const action of actionSet.actions) {
+      const paCommandNameFormatted = util.toPascalCase(action.commandName)
       //
       // ⏪ Confirm preceding action command file exists
       const paCommandFileName = util.toKebabCase(action.commandName)
-      const paCommandFileExists = fs.existsSync(`${path.commandsDirectoryPath}/${paCommandFileName}.ts`)
+      const paCommandFilePath = `${path.commandsDirectoryPath}/${paCommandFileName}.ts`
+      const paCommandFileExists = fs.existsSync(paCommandFilePath)
       if (!paCommandFileExists) {
-        invalid = true
-        errorMessage += `\n⏪ Preceding action command file missing: '${path.commandsDirectoryPath}/${paCommandFileName}.ts'`
+        issues.push(msg(is.paCommandFileMissing), [paCommandFilePath])
       }
       let paCommandFile: string
-      if (paCommandFileExists)
-        paCommandFile = fs.readFileSync(`${path.commandsDirectoryPath}/${paCommandFileName}.ts`, 'utf8')
+      if (paCommandFileExists) paCommandFile = fs.readFileSync(paCommandFilePath, 'utf8')
 
       // ⏪ Confirm preceding action command has correct AUTHORIZATION
       if (paCommandFile) {
@@ -260,17 +251,11 @@ export const confirmFiles = async (
         const expectedWriteRoles = writeRoles.length === 0 ? "'all'" : writeRoles.join(', ')
         // alert if command missing any authorization definition
         if (!paCommandHasAuthorization) {
-          invalid = true
-          errorMessage += `\n⏪ Command '${util.toPascalCase(
-            action.commandName
-          )}' does not have authorization defined (expecting ${expectedWriteRoles})`
+          issues.push(msg(is.paCommandAuthMissing), [paCommandNameFormatted, expectedWriteRoles])
         }
         // alert if command missing correct authorization definition
         if (paCommandHasAuthorization && !paCommandHasCorrectAuthorization) {
-          invalid = true
-          errorMessage += `\n⏪ Command '${util.toPascalCase(
-            action.commandName
-          )}' does not have correct authorization (expecting ${expectedWriteRoles})`
+          issues.push(msg(is.paCommandAuthIncorrect), [paCommandNameFormatted, expectedWriteRoles])
         }
       }
 
@@ -292,10 +277,7 @@ export const confirmFiles = async (
         // alert if PA command has no inputs defined
         if (!commandInputs || commandInputs.length === 0) {
           const expectedInputNames = paInputs.map((input) => input.name).join(', ')
-          invalid = true
-          errorMessage += `\n⏪ Command '${util.toPascalCase(
-            action.commandName
-          )}' does not have any inputs defined (expecting ${expectedInputNames})`
+          issues.push(msg(is.paCommandInputsMissing), [paCommandNameFormatted, expectedInputNames])
         }
 
         if (commandInputs && commandInputs.length > 0) {
@@ -331,20 +313,22 @@ export const confirmFiles = async (
           }
           // alert if any inputs are missing
           if (missingInputs && missingInputs.length > 0) {
-            invalid = true
             for (const missingInput of missingInputs) {
-              errorMessage += `\n⏪ Command '${util.toPascalCase(action.commandName)}' is missing input(s): ${
-                missingInput.name
-              } (${missingInput.type.join(', ')})`
+              issues.push(msg(is.paCommandInputMissing), [
+                paCommandNameFormatted,
+                missingInput.name,
+                missingInput.type.join(', '),
+              ])
             }
           }
           // alert if any inputs are mismatched
           if (incorrectTypeInputs && incorrectTypeInputs.length > 0) {
-            invalid = true
             for (const incorrectTypeInput of incorrectTypeInputs) {
-              errorMessage += `\n⏪ Command '${util.toPascalCase(action.commandName)}' missing type${
-                incorrectTypeInput.type.length > 1 ? 's' : ''
-              } for ${incorrectTypeInput.name} (${incorrectTypeInput.type.join(', ')})`
+              issues.push(msg(is.paCommandInputMissingTypes), [
+                paCommandNameFormatted,
+                incorrectTypeInput.name,
+                incorrectTypeInput.type.join(', '),
+              ])
             }
           }
         }
@@ -358,8 +342,7 @@ export const confirmFiles = async (
           (event) => !event.toLowerCase().startsWith('new date') && !event.toLowerCase().startsWith('new error')
         )
         if (!commandRegisteredEvents || commandRegisteredEvents.length === 0) {
-          invalid = true
-          errorMessage += `\n⏪ Command '${util.toPascalCase(action.commandName)}' does not register any events`
+          issues.push(msg(is.paCommandNoEvents, [paCommandNameFormatted]))
         }
         if (commandRegisteredEvents) {
           commandRegisteredEvents = commandRegisteredEvents.map((event) => event.replace(/new/g, '').trim())
@@ -370,9 +353,9 @@ export const confirmFiles = async (
       if (commandRegisteredEvents) {
         commandRegisteredEvents.forEach((eventName) => {
           const eventFileName = util.toKebabCase(eventName)
-          if (!fs.existsSync(`${path.eventsDirectoryPath}/${eventFileName}.ts`)) {
-            invalid = true
-            errorMessage += `\n🚀 Preceding action event file missing: '${path.eventsDirectoryPath}/${eventFileName}.ts'`
+          const eventFilePath = `${path.eventsDirectoryPath}/${eventFileName}.ts`
+          if (!fs.existsSync(eventFilePath)) {
+            issues.push(msg(is.paCommandEventFileMissing, [eventFilePath]))
           }
         })
       }
@@ -392,10 +375,10 @@ export const confirmFiles = async (
     if (!fs.existsSync(`${path.entitiesDirectoryPath}/${entityFileName}.ts`)) missingEntities.push(entityFileName)
   }
   if (missingEntities.length > 0) {
-    invalid = true
     const MissingEntitiesUnique = [...new Set(missingEntities)]
     for (const missingEntity of MissingEntitiesUnique) {
-      errorMessage += `\n👽 Entity file missing: '${path.entitiesDirectoryPath}/${missingEntity}.ts'`
+      const missingEntityFilePath = `${path.entitiesDirectoryPath}/${missingEntity}.ts`
+      issues.push(msg(is.entityFileMissing, [missingEntityFilePath]))
     }
   }
 
@@ -412,13 +395,11 @@ export const confirmFiles = async (
       const entityFieldNames = entity.fields.map((field) => field.fieldName) as string[]
       const missingFields = entityFieldNames.filter((fieldName) => !entityConstructorFieldNames.includes(fieldName))
       if (missingFields && missingFields.length > 0) {
-        invalid = true
         missingFields.forEach((missingField) => {
-          errorMessage += `\n👽 Entity '${util.toPascalCase(
-            entity.entityName
-          )}' does not have field: ${util.toCamelCase(missingField)} (${
-            entityFields.find((field) => field.fieldName === missingField).fieldTypes
-          })`
+          const entityName = util.toPascalCase(entity.entityName)
+          const fieldName = util.toCamelCase(missingField)
+          const fieldTypes = entityFields.find((field) => field.fieldName === missingField).fieldTypes.join(', ')
+          issues.push(msg(is.entityFieldMissing, [entityName, fieldName, fieldTypes]))
         })
       }
     }
@@ -456,10 +437,13 @@ export const confirmFiles = async (
           const assertedFieldTypes = matchingAssertedField.fieldTypes
           const missingFieldTypes = assertedFieldTypes.filter((type) => !entityFieldTypes.includes(type))
           if (missingFieldTypes && missingFieldTypes.length > 0) {
-            invalid = true
-            errorMessage += `\n👽 Entity '${
-              entity.entityName
-            }' field '${entityFieldName}' missing types: ${missingFieldTypes.join(', ')}`
+            issues.push(
+              msg(is.entityFieldMissingTypes, [
+                util.toPascalCase(entity.entityName),
+                entityFieldName,
+                missingFieldTypes.join(', '),
+              ])
+            )
           }
         }
       })
@@ -478,10 +462,10 @@ export const confirmFiles = async (
       missingReadModels.push(readModelFileName)
   }
   if (missingReadModels.length > 0) {
-    invalid = true
     const MissingReadModelsUnique = [...new Set(missingReadModels)]
     for (const missingReadModel of MissingReadModelsUnique) {
-      errorMessage += `\n🔭 Read Model file missing: '${path.readModelsDirectoryPath}/${missingReadModel}.ts'`
+      const missingReadModelFilePath = `${path.readModelsDirectoryPath}/${missingReadModel}.ts`
+      issues.push(msg(is.readModelFieldMissing, [missingReadModelFilePath]))
     }
   }
 
@@ -500,13 +484,11 @@ export const confirmFiles = async (
         (fieldName) => !readModelConstructorFieldNames?.includes(fieldName)
       )
       if (missingFields && missingFields.length > 0) {
-        invalid = true
         missingFields.forEach((missingField) => {
-          errorMessage += `\n🔭 Read Model '${util.toPascalCase(
-            readModel.readModelName
-          )}' does not have field: ${util.toCamelCase(missingField)} (${
-            readModelFields.find((field) => field.fieldName === missingField).fieldTypes
-          })`
+          const readModelName = util.toPascalCase(readModel.readModelName)
+          const fieldName = util.toCamelCase(missingField)
+          const fieldTypes = readModelFields.find((field) => field.fieldName === missingField).fieldTypes.join(', ')
+          issues.push(msg(is.readModelFieldMissing, [readModelName, fieldName, fieldTypes]))
         })
       }
     }
@@ -546,10 +528,13 @@ export const confirmFiles = async (
           const assertedFieldTypes = matchingAssertedField.fieldTypes
           const missingFieldTypes = assertedFieldTypes.filter((type) => !readModelFieldTypes.includes(type))
           if (missingFieldTypes && missingFieldTypes.length > 0) {
-            invalid = true
-            errorMessage += `\n🔭 Read Model '${
-              readModel.readModelName
-            }' field '${readModelFieldName}' missing types: ${missingFieldTypes.join(', ')}`
+            issues.push(
+              msg(is.readModelFieldMissingTypes, [
+                util.toPascalCase(readModel.readModelName),
+                readModelFieldName,
+                missingFieldTypes.join(', '),
+              ])
+            )
           }
         }
       })
@@ -559,6 +544,7 @@ export const confirmFiles = async (
   // 🔭 Confirm each READ MODEL PROJECTS at least one of scenario[i].expectedStateUpdates[i].entityName
   const scenarioEntityNames = scenarioEntities.map((entity) => entity.entityName)
   for (const readModel of scenarioReadModels) {
+    const readModelNameFormatted = util.toPascalCase(readModel.readModelName)
     const readModelFileName = util.toKebabCase(readModel.readModelName)
     const readModelFilePath = `${path.readModelsDirectoryPath}/${readModelFileName}.ts`
     const readModelFileExists = fs.existsSync(readModelFilePath)
@@ -566,16 +552,15 @@ export const confirmFiles = async (
       const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
       const readModelProjectedEntityNames = readModelFile.match(/(?<=@Projects\()(.*)(?=,)/gm)
       if (!readModelProjectedEntityNames) {
-        invalid = true
-        errorMessage += `\n🔭 Read Model '${util.toPascalCase(readModel.readModelName)}' does not project any entities`
+        issues.push(msg(is.readModelNoEntitiesProjected), [readModelNameFormatted])
       }
       if (readModelProjectedEntityNames) {
         readModelProjectedEntityNames.forEach((projectedEntityName) => {
           if (!scenarioEntityNames.includes(projectedEntityName)) {
-            invalid = true
-            errorMessage += `\n🔭 Read Model '${util.toPascalCase(
-              readModel.readModelName
-            )}' does not project at least one of these entities: ${scenarioEntities.join(', ')}`
+            issues.push(msg(is.readModelNoMatchingEntityProjected), [
+              readModelNameFormatted,
+              scenarioEntities.join(', '),
+            ])
           }
         })
       }
@@ -584,6 +569,7 @@ export const confirmFiles = async (
 
   // 🔭 Confirm each read model has correct AUTHORIZATION
   for (const readModel of scenarioReadModels) {
+    const readModelNameFormatted = util.toPascalCase(readModel.readModelName)
     const readModelFileName = util.toKebabCase(readModel.readModelName)
     const readModelFilePath = `${path.readModelsDirectoryPath}/${readModelFileName}.ts`
     const readModelFileExists = fs.existsSync(readModelFilePath)
@@ -611,17 +597,11 @@ export const confirmFiles = async (
       const expectedReadRoles = !Array.isArray(assertedReadModelRoles) ? "'all'" : assertedReadModelRoles.join(', ')
       // alert if read model missing any authorization definition
       if (!readModelHasAuthorization) {
-        invalid = true
-        errorMessage += `\n🔭 Read Model '${util.toPascalCase(
-          readModel.readModelName
-        )}' does not have authorization defined (expecting ${expectedReadRoles})`
+        issues.push(msg(is.readModelAuthMissing), [readModelNameFormatted, expectedReadRoles])
       }
       // alert if read model missing correct authorization definition
       if (readModelHasAuthorization && !readModelHasCorrectAuthorization) {
-        invalid = true
-        errorMessage += `\n🔭 Read Model '${util.toPascalCase(
-          readModel.readModelName
-        )}' does not have correct authorization (expecting ${expectedReadRoles})`
+        issues.push(msg(is.readModelAuthIncorrect), [readModelNameFormatted, expectedReadRoles])
       }
     }
   }
@@ -633,9 +613,9 @@ export const confirmFiles = async (
   if (triggerRegisteredEvents) {
     triggerRegisteredEvents.forEach((eventName) => {
       const eventFileName = util.toKebabCase(eventName)
-      if (!fs.existsSync(`${path.eventsDirectoryPath}/${eventFileName}.ts`)) {
-        invalid = true
-        errorMessage += `\n🚀 Event file missing: '${path.eventsDirectoryPath}/${eventFileName}.ts'`
+      const eventFilePath = `${path.eventsDirectoryPath}/${eventFileName}.ts`
+      if (!fs.existsSync(eventFilePath)) {
+        issues.push(msg(is.eventFileMissing), [eventFilePath])
       }
     })
   }
@@ -644,14 +624,14 @@ export const confirmFiles = async (
   for (const entity of scenarioEntities) {
     const entityReducedEvents = []
     const entityFileName = util.toKebabCase(entity.entityName)
+    const entityNameFormatted = util.toPascalCase(entity.entityName)
     const entityFilePath = `${path.entitiesDirectoryPath}/${entityFileName}.ts`
     const entityFileExists = fs.existsSync(entityFilePath)
     if (entityFileExists) {
       const entityFile = fs.readFileSync(entityFilePath, 'utf8')
       const eventsReduced = entityFile.match(/@Reduces\((\w+)/gs)
       if (!eventsReduced) {
-        invalid = true
-        errorMessage += `\n👽 Entity '${util.toPascalCase(entity.entityName)}' does not reduce any events`
+        issues.push(msg(is.entityNoEventsReduced), [entityNameFormatted])
       }
       if (eventsReduced) {
         eventsReduced.forEach((eventReduced) => {
@@ -698,8 +678,7 @@ export const confirmFiles = async (
           })
           // if no event handlers register an event reduced by the entity, exit this check with error
           if (triggerFile && !matchingEventFound && eventHandlersMatchingEntity.length === 0) {
-            invalid = true
-            errorMessage += `\n🚀 Cannot find event path from trigger to entity '${entity.entityName}'`
+            issues.push(msg(is.eventPathTriggerToEntityMissing), [entityNameFormatted])
           }
           // if there is a matching event handler, check if its initiating event matches an event registered by trigger file
           if (triggerFile && !matchingEventFound && eventHandlersMatchingEntity.length > 0) {
@@ -710,24 +689,21 @@ export const confirmFiles = async (
             })
             // if no match found between entity : 1 event handler : trigger, exit this check with error
             // LATER: possibly refactor to check farther up event handler chain to trigger than 1 file
-            invalid = true
-            errorMessage += `\n🚀 Cannot find event path from trigger to entity '${entity.entityName}' (inspected event handlers 1 event deep)`
+            issues.push(msg(is.eventPathTriggerToHandlerToEntityMissing), [entityNameFormatted])
           }
         }
       }
     }
   }
 
-  if (invalid && errorMessage.length > 0) {
-    // alphabetize error messages
-    errorMessage = errorMessage.split('\n').sort().join('\n')
-    const errorMessageHeading = `\n\n'${processName}' File Issues\n=====================================================================`
-    // prepend heading to error messages
-    errorMessage = `${errorMessageHeading}\n${errorMessage}`
+  if (issues.length > 0) {
+    confirmFilesLogHeader()
+    log.issueNotes(issues.sort())
+    invalid = true
   }
 
-  // if any above INVALID, fail with errors
-  if (invalid) return errorMessage
+  // if any above INVALID, fail with issues
+  if (invalid) return issues
 
   // if all VALID
   return true
