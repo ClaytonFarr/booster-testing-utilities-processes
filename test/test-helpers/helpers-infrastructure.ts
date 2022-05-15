@@ -3,7 +3,7 @@ import { AWSTestHelper } from '@boostercloud/framework-provider-aws-infrastructu
 import { ApolloClient } from 'apollo-client'
 import { faker } from '@faker-js/faker'
 import { NormalizedCacheObject } from 'apollo-cache-inmemory'
-import CustomLocalTestHelper from './custom-local-test-helper/local-test-helper'
+import CustomLocalTestHelper from '../custom-local-test-helper/local-test-helper'
 import { testApplicationName } from '../constants'
 
 // Test Infrastructure Setup
