@@ -49,10 +49,12 @@ export const testProcess = (process: Process): void => {
     if (validInputPass === true && filesPresentCheck === true) {
       expectationsCheck = await confirmAssertions(processAssertions, filePaths)
       expectationsPass = expectationsCheck === true ? true : false
-      if (expectationsPass) log.testStepSuccessMessage('All process expectations were met')
+      if (expectationsPass) log.testStepSuccessMessage('All process expectations met')
 
       //
       it('Meets all scenario expectations', async () => expect(expectationsPass).toBe(true))
     }
+
+    log.processFooter()
   })
 }
