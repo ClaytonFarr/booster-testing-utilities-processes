@@ -1,4 +1,4 @@
-import { Process, testProcess } from '../test-helpers'
+import { Process, testProcess } from '../helpers/process-test-helper'
 import { UUID } from '@boostercloud/framework-types'
 const testId = UUID.generate().toString()
 
