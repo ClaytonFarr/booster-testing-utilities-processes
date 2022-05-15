@@ -4,13 +4,20 @@ import { gatherAssertions } from './gather-assertions'
 import { confirmFiles } from './confirm-files'
 import { confirmAssertions } from './confirm-assertions'
 import { describe, it, expect } from 'vitest'
-import * as settings from './settings'
 import * as log from './reporter'
 
 // ======================================================================================
 
 export const testProcess = (process: Process, filePaths?: LocalBoosterFilePaths): void => {
-  const useFilePaths = filePaths ?? settings.filePaths
+  const useFilePaths: LocalBoosterFilePaths = {
+    commandsDirectoryPath: filePaths.commandsDirectoryPath ?? 'src/commands',
+    scheduledCommandsDirectoryPath: filePaths.scheduledCommandsDirectoryPath ?? 'src/scheduled-commands',
+    eventHandlersDirectoryPath: filePaths.eventHandlersDirectoryPath ?? 'src/event-handlers',
+    eventsDirectoryPath: filePaths.eventsDirectoryPath ?? 'src/events',
+    entitiesDirectoryPath: filePaths.entitiesDirectoryPath ?? 'src/entities',
+    readModelsDirectoryPath: filePaths.readModelsDirectoryPath ?? 'src/read-models',
+    rolesPath: filePaths.rolesPath ?? 'src/roles.ts',
+  }
 
   // Notes:
   // - `log` utility is used here and within methods to print issues/result messages
