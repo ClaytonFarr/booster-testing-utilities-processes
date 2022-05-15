@@ -15,12 +15,12 @@ export interface ScheduledCommand {
 export interface StateUpdate {
   entityName: string
   values?: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>
-  notValues?: Record<string, string | number | boolean | UUID> // values that should NOT be present in state update
+  notValues?: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]> // values that should NOT be present in state update
 }
 export interface VisibleUpdate {
   readModelName: string
   values?: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>
-  notValues?: Record<string, string | number | boolean | UUID> // values that should NOT be visible
+  notValues?: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]> // values that should NOT be visible
   authorized: string[] | string
 }
 export interface PrecedingAction {
