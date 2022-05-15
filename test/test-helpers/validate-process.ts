@@ -11,7 +11,7 @@ export const validateProcessInputs = (process: Process): boolean | string[] => {
   let issueHeaderPrinted = false
   const issues = []
 
-  // ✅ validate trigger.name is not blank
+  // ✅ validate process.name is not blank
   if (!process.name) {
     issues.push(msg(is.processNameBlank))
   }
