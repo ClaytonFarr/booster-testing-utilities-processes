@@ -1,4 +1,4 @@
-import type { Process, Assertions } from './types'
+import type { Process, Assertions, LocalBoosterFilePaths } from './types'
 import { validateProcessInputs } from './validate-process'
 import { gatherAssertions } from './gather-assertions'
 import { confirmFiles } from './confirm-files'
@@ -9,8 +9,8 @@ import * as log from './reporter'
 
 // ======================================================================================
 
-export const testProcess = (process: Process): void => {
-  const filePaths = settings.filePaths
+export const testProcess = (process: Process, filePaths?: LocalBoosterFilePaths): void => {
+  const useFilePaths = filePaths ?? settings.filePaths
 
   // Notes:
   // - `log` utility is used here and within methods to print issues/result messages
@@ -36,7 +36,7 @@ export const testProcess = (process: Process): void => {
     let filesPresentCheck: boolean | string[]
     let filesPresentPass: boolean
     if (validInputPass === true && checkFiles) {
-      filesPresentCheck = confirmFiles(processAssertions, filePaths)
+      filesPresentCheck = confirmFiles(processAssertions, useFilePaths)
       filesPresentPass = filesPresentCheck === true ? true : false
 
       //
@@ -47,7 +47,7 @@ export const testProcess = (process: Process): void => {
     let expectationsCheck: boolean | string[]
     let expectationsPass: boolean
     if (validInputPass === true && filesPresentCheck === true) {
-      expectationsCheck = await confirmAssertions(processAssertions, filePaths)
+      expectationsCheck = await confirmAssertions(processAssertions, useFilePaths)
       expectationsPass = expectationsCheck === true ? true : false
       if (expectationsPass) log.testStepSuccessMessage('All process expectations met')
 

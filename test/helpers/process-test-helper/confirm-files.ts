@@ -1,4 +1,4 @@
-import type { Assertions, AssertionValue } from './types'
+import type { Assertions, AssertionValue, LocalBoosterFilePaths } from './types'
 import { addMessage as msg, fileIssues as is } from './issue-messages'
 import * as util from './helpers-utils'
 import * as log from './reporter'
@@ -6,7 +6,7 @@ import fs from 'fs'
 
 const confirmFilesLogHeader = (): void => log.issueGroupHeader(is.fileIssuesHeader)
 
-export const confirmFiles = (assertions: Assertions, filePaths: Record<string, string>): boolean | string[] => {
+export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFilePaths): boolean | string[] => {
   const path = filePaths
   let invalid = false
   const issues = []

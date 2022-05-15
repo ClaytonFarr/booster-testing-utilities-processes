@@ -1,4 +1,6 @@
-export const filePaths = {
+import { LocalBoosterFilePaths } from './types/settings-types'
+
+export const filePaths: LocalBoosterFilePaths = {
   commandsDirectoryPath: 'src/commands',
   scheduledCommandsDirectoryPath: 'src/scheduled-commands',
   eventHandlersDirectoryPath: 'src/event-handlers',

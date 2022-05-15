@@ -14,7 +14,7 @@ const confirmAssertionsLogHeader = (): void => log.issueGroupHeader(is.confirmat
 
 export const confirmAssertions = async (
   assertions: type.Assertions,
-  filePaths: Record<string, string>,
+  filePaths: type.LocalBoosterFilePaths,
   resultWaitTime = 5000
 ): Promise<boolean | string[]> => {
   const path = filePaths
