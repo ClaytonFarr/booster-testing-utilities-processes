@@ -20,8 +20,8 @@ export const testProcess = (process: Process, filePaths?: LocalBoosterFilePaths)
   }
 
   // Notes:
-  // - `log` utility is used here and within methods to print issues/result messages
-  // - vitest is used as test runner (with HMR) and its methods used here to assert test results for CI
+  // - The `log` utility is used here and within methods to print issues/result messages
+  // - Vitest is used as test runner (with HMR) and its methods used here to assert test results in CI
 
   describe(`Process: '${process.name}'`, async () => {
     log.processHeader(process.name)
