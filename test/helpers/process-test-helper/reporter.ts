@@ -52,7 +52,7 @@ export const testStepSuccessMessage = (heading: string): void => {
 
 export const issueGroupHeader = (heading: string): void => {
   log(
-    c.bold(c.red(heading)) //
+    c.bold(c.red(`${heading}\n`)) //
     // c.redBright('\n=============================================================\n')
     // c.redBright('\n-------------------------------------------------------------\n')
     // c.redBright('\n·····························································')
