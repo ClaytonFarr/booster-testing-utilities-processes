@@ -4,7 +4,10 @@ import { ApolloClient } from 'apollo-client'
 import { faker } from '@faker-js/faker'
 import { NormalizedCacheObject } from 'apollo-cache-inmemory'
 import CustomLocalTestHelper from '../custom-local-test-helper/local-test-helper'
-import { testApplicationName } from '../constants'
+import { testApplicationName } from '../../constants'
+import * as c from 'colorette'
+
+const log = console.log
 
 // Test Infrastructure Setup
 // ====================================================================================
@@ -36,4 +39,15 @@ export const authGraphQLclient = (role: string): ApolloClient<NormalizedCacheObj
   const roleToken = applicationUnderTest.token.forUser(roleEmail, role)
   const roleGraphQLclient = applicationUnderTest.graphql.client(roleToken)
   return roleGraphQLclient
+}
+
+export const getTestAuthToken = (role: string): string => {
+  const roleEmail = faker.internet.email()
+  const roleToken = applicationUnderTest.token.forUser(roleEmail, role)
+  return roleToken
+}
+
+export const printRoleTestToken = (role: string): void => {
+  const testToken = getTestAuthToken(role)
+  log(c.bold(`🔑 '${role}' Role Auth Test Token:\n\n`) + testToken)
 }
