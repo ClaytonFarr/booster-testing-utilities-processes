@@ -26,46 +26,64 @@ const issueEmoji = {
   readModel: '🔭',
 }
 
+const logWidth = 80
+
 export const processHeader = (processName: string): void => {
+  const space = ' '
+  const headingWidth = processName.length + 10
+  const sideMargin = (logWidth - headingWidth) / 2
   log(
-    // c.blue('\n============================================================='),
-    // c.blue('\n------------------------------------------------------------'),
-    // c.blue('\n·····························································'),
-    c.bold(c.black(c.bgBlueBright(`\nProcess - ${processName}\n`)))
+    c.bold(
+      c.black(
+        c.bgCyanBright(`\n${space.repeat(sideMargin)}Process - ${processName}${space.repeat(sideMargin)}`) //
+      )
+    )
   )
 }
 
 export const processFooter = (): void => {
+  const borderIcon = '='
   log(
-    c.blue('\n=============================================================\n')
-    // c.blue('\n------------------------------------------------------------')
-    // c.blue('\n·····························································'),
+    c.dim(
+      c.cyan(`\n${borderIcon.repeat(logWidth - 1)}\n`) //
+    )
   )
 }
 
-export const testStepSuccessMessage = (heading: string): void => {
+export const testStepSuccessMessage = (message: string): void => {
   log(
-    c.greenBright(icon.check), //
-    c.white(` ${heading}`)
+    c.bold(
+      c.greenBright(`${icon.check} ${message}`) //
+    )
   )
 }
 
 export const issueGroupHeader = (heading: string): void => {
+  const borderIcon = '-'
+  const headingWidth = heading.length + 2
+  const halfBorderWidth = (logWidth - headingWidth) / 2
   log(
-    c.bold(c.red(`${heading}\n`)) //
-    // c.redBright('\n=============================================================\n')
-    // c.redBright('\n-------------------------------------------------------------\n')
-    // c.redBright('\n·····························································')
+    c.redBright(c.dim(`${borderIcon.repeat(halfBorderWidth)}`)), //
+    c.bold(c.red(`${heading}`)),
+    c.redBright(c.dim(`${borderIcon.repeat(halfBorderWidth)}\n`))
   )
 }
 
 export const issueGroupSubheader = (heading: string): void => {
+  const borderIcon = '·'
+  const headingWidth = heading.length + 2
+  const halfBorderWidth = (logWidth - headingWidth) / 2
   log(
-    c.white(c.bold(`${heading}`)), //
-    // c.white('\n=============================================================\n')
-    // c.white('\n-------------------------------------------------------------\n')
-    c.white('\n·····························································\n')
+    c.white(c.dim(`${borderIcon.repeat(halfBorderWidth)}`)), //
+    c.bold(c.white(`${heading}`)),
+    c.white(c.dim(`${borderIcon.repeat(halfBorderWidth)}\n`))
   )
+  // log(
+  //   c.white(c.bold(`${heading}`)), //
+  //   c.dim(
+  //     c.white(`\n${borderIcon.repeat(logWidth)}\n`) //
+  //   )
+  // )
 }
 
 export const issueNote = (note: string | string[]): void => {
