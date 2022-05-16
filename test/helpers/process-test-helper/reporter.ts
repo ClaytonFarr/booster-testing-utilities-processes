@@ -77,10 +77,10 @@ export const issueNote = (note: string | string[]): void => {
       log(JSON.stringify(JSON.parse(note), null, 2))
     } else {
       // ...otherwise present as string
-      log(
-        c.white(icon.dot), //
-        c.white(note)
-      )
+      const noteHasIcon = !!note.match(Object.values(icon).join('|'))
+      const noteHasEmoji = !!note.match(Object.values(issueEmoji).join('|'))
+      const noteMsg = noteHasIcon || noteHasEmoji ? c.white(note) : c.white(icon.dot + ' ' + note)
+      log(noteMsg)
     }
   } else {
     // if array of multiple notes or array of lines from a single note
@@ -89,8 +89,9 @@ export const issueNote = (note: string | string[]): void => {
         // if array of separate note strings
         if (n === note[0]) {
           // ...use first note as heading
-          const noteHasIcon = !!n.match(Object.values(issueEmoji).join('|'))
-          const noteHeader = noteHasIcon ? c.white(n + '\n') : c.white(icon.dot + ' ' + n + '\n')
+          const noteHasIcon = !!n.match(Object.values(icon).join('|'))
+          const noteHasEmoji = !!n.match(Object.values(issueEmoji).join('|'))
+          const noteHeader = noteHasIcon || noteHasEmoji ? c.white(n + '\n') : c.white(icon.dot + ' ' + n + '\n')
           log(noteHeader)
         }
         // ...list remaining notes as children
