@@ -8,6 +8,94 @@ import gql from 'graphql-tag'
 // Read Model Queries
 // =====================================================================================================================
 
+export const createQueryFilterString = (
+  fields: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>
+): string => {
+  const fieldNames = []
+  const fieldItems = []
+  for (const [key, value] of Object.entries(fields)) {
+    fieldNames.push(key)
+    fieldItems.push({ fieldName: key, value })
+  }
+  let filterString = '{ '
+  fieldItems.forEach(
+    (field: { fieldName: string; value: string | number | UUID | Record<string, unknown> | unknown[] }) => {
+      const valueTypeIsKeyword = util.valueIsTypeKeyword(field.value)
+      const valueType = util.inferValueType(field.value)
+
+      if (valueTypeIsKeyword) {
+        filterString += `${field.fieldName}: { isDefined: true }, `
+      }
+      if (!valueTypeIsKeyword) {
+        // currently limited to filters from strings, numbers, and booleans
+        // JSON or stringified JSON value checks will be ignored
+        if (valueType === 'string' && !util.isStringJSON(field.value as string)) {
+          filterString += `${field.fieldName}: { contains: "${field.value}" }, `
+        }
+        if (valueType === 'number' || valueType === 'boolean') {
+          filterString += `${field.fieldName}: { eq: ${field.value} }, `
+        }
+        if (valueType === 'UUID') {
+          filterString += `${field.fieldName}: { eq: "${field.value}" }, `
+        }
+        if (valueType === 'object') {
+          for (const [key, value] of Object.entries(field.value)) {
+            const valueType = util.inferValueType(value)
+            if (valueType === 'string') {
+              filterString += `${field.fieldName}: { ${key}: { contains: "${value}" } }, `
+            }
+            if (valueType === 'number' || valueType === 'boolean') {
+              filterString += `${field.fieldName}: { ${key}: { eq: ${value} } }, `
+            }
+            if (valueType === 'UUID') {
+              filterString += `${field.fieldName}: { ${key}: { eq: "${value}" } }, `
+            }
+          }
+        }
+        if (Array.isArray(field.value) && field.value.length > 0) {
+          const arrayType = util.inferValueType(field.value[0])
+          if (arrayType === 'string') {
+            if (field.value.length === 1) filterString += `${field.fieldName}: { includes: "${field.value[0]}" }, `
+            if (field.value.length > 1) {
+              filterString += 'and: [ '
+              for (const value of field.value) {
+                filterString += `{ ${field.fieldName}: { includes: "${value}" } }, `
+              }
+              filterString += '], '
+            }
+          }
+          if (arrayType === 'number' || arrayType === 'boolean') {
+            if (field.value.length === 1) filterString += `${field.fieldName}: { includes: ${field.value[0]} }, `
+            if (field.value.length > 1) {
+              filterString += 'and: [ '
+              for (const value of field.value) {
+                filterString += `{ ${field.fieldName}: { includes: ${value} } }, `
+              }
+              filterString += '], '
+            }
+          }
+          if (arrayType === 'object') {
+            if (field.value.length === 1) {
+              const valueAsJson = util.convertObjectToJsonString(field.value[0] as Record<string, unknown>)
+              filterString += `${field.fieldName}: { includes: ${valueAsJson} }, `
+            }
+            if (field.value.length > 1) {
+              filterString += 'and: [ '
+              for (const thisValue of field.value) {
+                const valueAsJson = util.convertObjectToJsonString(thisValue as Record<string, unknown>)
+                filterString += `{ ${field.fieldName}: { includes: ${valueAsJson} } }, `
+              }
+              filterString += '], '
+            }
+          }
+        }
+      }
+    }
+  )
+  filterString += ' }'
+  return filterString
+}
+
 export const evaluateReadModelProjection = async (
   graphQLclient: ApolloClient<NormalizedCacheObject>,
   readModelName: string,
@@ -26,80 +114,7 @@ export const evaluateReadModelProjection = async (
   const fieldsToReturn = [...fieldNames].join(',')
 
   // ...create filter string
-  let filterString = '{ '
-  fieldItems.forEach((field) => {
-    const valueTypeIsKeyword = util.valueIsTypeKeyword(field.value)
-    const valueType = util.inferValueType(field.value)
-
-    if (valueTypeIsKeyword) {
-      filterString += `${field.fieldName}: { isDefined: true }, `
-    }
-    if (!valueTypeIsKeyword) {
-      // currently limited to filters from strings, numbers, and booleans
-      // JSON or stringified JSON value checks will be ignored
-      if (valueType === 'string' && !util.isStringJSON(field.value)) {
-        filterString += `${field.fieldName}: { contains: "${field.value}" }, `
-      }
-      if (valueType === 'number' || valueType === 'boolean') {
-        filterString += `${field.fieldName}: { eq: ${field.value} }, `
-      }
-      if (valueType === 'UUID') {
-        filterString += `${field.fieldName}: { eq: "${field.value}" }, `
-      }
-      if (valueType === 'object') {
-        for (const [key, value] of Object.entries(field.value)) {
-          const valueType = util.inferValueType(value)
-          if (valueType === 'string') {
-            filterString += `${field.fieldName}: { ${key}: { contains: "${value}" } }, `
-          }
-          if (valueType === 'number' || valueType === 'boolean') {
-            filterString += `${field.fieldName}: { ${key}: { eq: ${value} } }, `
-          }
-          if (valueType === 'UUID') {
-            filterString += `${field.fieldName}: { ${key}: { eq: "${value}" } }, `
-          }
-        }
-      }
-      if (valueType === 'array' && field.value.length > 0) {
-        const arrayType = util.inferValueType(field.value[0])
-        if (arrayType === 'string') {
-          if (field.value.length === 1) filterString += `${field.fieldName}: { includes: "${field.value[0]}" }, `
-          if (field.value.length > 1) {
-            filterString += 'and: [ '
-            for (const value of field.value) {
-              filterString += `{ ${field.fieldName}: { includes: "${value}" } }, `
-            }
-            filterString += '], '
-          }
-        }
-        if (arrayType === 'number' || arrayType === 'boolean') {
-          if (field.value.length === 1) filterString += `${field.fieldName}: { includes: ${field.value[0]} }, `
-          if (field.value.length > 1) {
-            filterString += 'and: [ '
-            for (const value of field.value) {
-              filterString += `{ ${field.fieldName}: { includes: ${value} } }, `
-            }
-            filterString += '], '
-          }
-        }
-        if (arrayType === 'object') {
-          if (field.value.length === 1) {
-            const valueAsJson = util.convertObjectToJsonString(field.value[0])
-            filterString += `${field.fieldName}: { includes: ${valueAsJson} }, `
-          }
-          if (field.value.length > 1) {
-            filterString += 'and: [ '
-            for (const thisValue of field.value) {
-              const valueAsJson = util.convertObjectToJsonString(thisValue)
-              filterString += `{ ${field.fieldName}: { includes: ${valueAsJson} } }, `
-            }
-            filterString += '], '
-          }
-        }
-      }
-    }
-  })
-  filterString += ' }'
+  const filterString = createQueryFilterString(fields)
 
   // ...build query
   const filterBy = util.looseJSONparse(filterString)
