@@ -433,21 +433,23 @@ export const confirmAssertions = async (
                 shouldNotHaveItems = error
               }
             }
-
-            // report any errors
-            if (shouldHaveItems.length === 0 || shouldNotHaveItems.length > 0) {
-              scenarioIssues.push(msg(is.visibleUpdateErrorHeading, [util.toPascalCase(visibleUpdate.readModelName)]))
-            }
-            // if no items found for shouldHave
-            if (shouldHaveItems.length === 0) {
+            // report any error if no items found for shouldHave
+            if (visibleUpdate.values && shouldHaveItems.length === 0) {
+              const readModelNameFormatted = util.toPascalCase(visibleUpdate.readModelName)
               const expectedValues = JSON.stringify(visibleUpdate.values)
-              scenarioIssues.push(msg(is.visibleUpdateItemNotFound, [expectedValues]))
+              const queryFilter = readModel.createQueryFilterString(visibleUpdate.values).replace('  ', ' ')
+              const queryFilterStringified = JSON.stringify(util.looseJSONparse(queryFilter))
+              scenarioIssues.push(msg(is.visibleUpdateErrorHeading, [readModelNameFormatted]))
+              scenarioIssues.push(msg(is.visibleUpdateItemNotFound, [expectedValues, queryFilterStringified]))
             }
-
-            // if any items found for shouldNotHave
-            if (shouldNotHaveItems.length > 0) {
-              const expectedValues = JSON.stringify(visibleUpdate.values)
-              scenarioIssues.push(msg(is.visibleUpdateNotItemFound, [expectedValues]))
+            // report any error if any items found for shouldNotHave
+            if (visibleUpdate.notValues && shouldNotHaveItems.length > 0) {
+              const readModelNameFormatted = util.toPascalCase(visibleUpdate.readModelName)
+              const expectedNotValues = JSON.stringify(visibleUpdate.notValues)
+              const queryFilter = readModel.createQueryFilterString(visibleUpdate.notValues).replace('  ', ' ')
+              const queryFilterStringified = JSON.stringify(util.looseJSONparse(queryFilter))
+              scenarioIssues.push(msg(is.visibleUpdateErrorHeading, [readModelNameFormatted]))
+              scenarioIssues.push(msg(is.visibleUpdateNotItemFound, [expectedNotValues, queryFilterStringified]))
             }
           }
         }
