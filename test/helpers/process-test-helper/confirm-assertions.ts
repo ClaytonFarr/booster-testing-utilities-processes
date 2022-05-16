@@ -292,10 +292,15 @@ export const confirmAssertions = async (
                     stateUpdateCheckErrors.push(msg(is.stateUpdateFieldValueMissing, [key, value as string]))
                 }
               }
+
               // ...if value is a object
               if (valueType === 'object') {
                 const matchingUpdateValue = matchingUpdate.value[key]
-                expectedState = !!JSON.stringify(matchingUpdateValue).includes(JSON.stringify(value))
+                expectedState = !!JSON.stringify(matchingUpdateValue)?.includes(JSON.stringify(value))
+                if (!matchingUpdateValue) {
+                  expectedState = false
+                  stateUpdateCheckErrors.push(msg(is.stateUpdateFieldValueObjectMissing, [key]))
+                }
                 if (!expectedState) {
                   const stateValue = JSON.stringify(matchingUpdate.value[key])
                   const expectedValue = JSON.stringify(value)
@@ -304,18 +309,32 @@ export const confirmAssertions = async (
                   )
                 }
               }
+
               // ...if value is an array
               if (valueType === 'array') {
                 const matchingUpdateValue = matchingUpdate.value[key]
                 const valueArray = value as unknown[]
                 // ...if matchingUpdateValue is an array
                 if (Array.isArray(matchingUpdateValue)) {
-                  // ...check if every item in value array is present in matchingUpdateValue array
+                  // ...check if every item in valueArray is present in matchingUpdateValue array
+                  for (const item of valueArray) {
+                    const itemType = util.inferValueType(item)
+                    // ...if item to check is a string, number, boolean, UUID
+                    if (itemType !== 'object' && itemType !== 'array')
+                      expectedState = matchingUpdateValue.includes(item)
+                    // ...if item to check is an object or array
+                    if (itemType === 'object' || itemType === 'array')
+                      expectedState = matchingUpdateValue.includes(JSON.stringify(item))
+                  }
                   expectedState = valueArray.every((value) =>
                     matchingUpdateValue.some((matchingValue) =>
                       JSON.stringify(matchingValue).includes(JSON.stringify(value))
                     )
                   )
+                  if (!matchingUpdateValue) {
+                    expectedState = false
+                    stateUpdateCheckErrors.push(msg(is.stateUpdateFieldValueObjectMissing, [key]))
+                  }
                   if (!expectedState) {
                     const stateValue = JSON.stringify(matchingUpdate.value[key])
                     const expectedValue = JSON.stringify(value)
@@ -331,11 +350,13 @@ export const confirmAssertions = async (
                     msg(is.stateUpdateFieldValueNotArray, [key, util.inferValueType(matchingUpdateValue)])
                   )
                 }
-                // if expected state incorrect add error message
-                stateUpdateHasCorrectState.push(expectedState)
               }
+
+              // if expected state incorrect add error message
+              stateUpdateHasCorrectState.push(expectedState)
             }
           }
+
           if (matchingUpdate && stateUpdate.notValues) {
             for (const [key, value] of Object.entries(stateUpdate.notValues)) {
               const valueIsTestable = !util.valueIsTypeKeyword(value)
