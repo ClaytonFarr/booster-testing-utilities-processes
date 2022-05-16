@@ -2,7 +2,7 @@ import * as c from 'colorette'
 import * as util from './helpers-utils'
 
 const log = console.log
-const table = console.table
+// const table = console.table
 
 const icon = {
   right: '→',
@@ -73,7 +73,8 @@ export const issueNote = (note: string | string[]): void => {
     // if a single note
     if (util.isStringJSON(note)) {
       // ...check if note is JSON and present as table
-      table(JSON.parse(note))
+      // table(JSON.parse(note))
+      log(JSON.stringify(JSON.parse(note), null, 2))
     } else {
       // ...otherwise present as string
       log(
@@ -96,7 +97,8 @@ export const issueNote = (note: string | string[]): void => {
         if (n > note[0]) {
           if (util.isStringJSON(n)) {
             // ...check if note is JSON and present as table
-            table(JSON.parse(n))
+            // table(JSON.parse(n))
+            log(JSON.stringify(JSON.parse(n), null, 2))
           } else {
             // ...otherwise present as string
             log(
@@ -111,7 +113,8 @@ export const issueNote = (note: string | string[]): void => {
         for (const l of n) {
           if (util.isStringJSON(l)) {
             // ...check if line is JSON and present as table
-            table(JSON.parse(l))
+            // table(JSON.parse(l))
+            log(JSON.stringify(JSON.parse(l), null, 2))
           } else {
             // ...otherwise present as string
             log(
