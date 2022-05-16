@@ -4,6 +4,8 @@ import * as util from './helpers-utils'
 const log = console.log
 // const table = console.table
 
+const logWidth = 60
+
 const icon = {
   right: '→',
   down: '↓',
@@ -25,8 +27,6 @@ const issueEmoji = {
   entity: '👽',
   readModel: '🔭',
 }
-
-const logWidth = 80
 
 export const processHeader = (processName: string): void => {
   const space = ' '
