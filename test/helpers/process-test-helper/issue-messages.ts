@@ -91,7 +91,7 @@ export const confirmationIssues = {
   triggerMalformedRequestAllowed: "✨ Trigger '{{commandName}}' was expected to be rejected but was not",
   triggerRequestUnsuccessful: "✨ Trigger '{{commandName}}' returned error\nRequest: {{commandRequest}}\nResponse: {{commandResponse}}",
 
-  stateUpdateErrorHeading: "👽 Entity '{{entityName}}' was not updated as expected",
+  stateUpdateErrorHeading: "👽 Entity '{{entityName}}' was not updated as expected\n",
   stateUpdateNotFoundWithinTimeLimit: "👽 No state update found for '{{entityName}}' within {{numberOfSec}} seconds\nSearched for key: '{{primaryKey}}'",
   stateUpdateNotFound: "👽 No matching state update found for entity '{{entityName}}'\nSearched for key: '{{primaryKey}}'",
   stateUpdateFieldValueIncorrect: "   ↪ Field '{{fieldName}}' value is '{{value}}' (expected '{{expectedValue}}')",
@@ -102,9 +102,9 @@ export const confirmationIssues = {
   stateUpdateNotFieldValuePresent: "   ↪ Field '{{fieldName}}' with '{{stateValue}}' value found (should not be present)",
   stateUpdateNotFieldPresent: "   ↪ Field '{{fieldName}}' is present (should not be present with any value)",
 
-  visibleUpdateErrorHeading: "🔭 Read model '{{readModelName}}' was not updated as expected",
-  visibleUpdateItemNotFound: '   ↪ Could not find item with values:\n{{values}}',
-  visibleUpdateNotItemFound: '   ↪ Found item that should NOT have values:\n{{values}}',
+  visibleUpdateErrorHeading: "🔭 Read model '{{readModelName}}' was not updated as expected\n",
+  visibleUpdateItemNotFound: 'Could not find item - expected to find:\n{{values}}',
+  visibleUpdateNotItemFound: 'Found item that should NOT exist or be visible - was able to find:\n{{values}}',
 }
 
 export const addMessage = (issueString: string, dynamicValues?: string[]): string | string[] => {
@@ -112,18 +112,18 @@ export const addMessage = (issueString: string, dynamicValues?: string[]): strin
   let issue = issueString
 
   // check for dynamic value placeholders
-  const issueReplacementKeys = issue.match(/\{\{[^}]+\}\}/g)
-  if (!issueReplacementKeys) return issue
+  const placeholderReplacementKeys = issue.match(/\{\{[^}]+\}\}/g)
+  if (!placeholderReplacementKeys) return issue
 
   // replace issue message with dynamic values (in order they appear in the array)
-  const issueReplacements = issueReplacementKeys.map((key: string): string => {
-    const keyIndex = issueReplacementKeys.indexOf(key)
+  const placeholderReplacements = placeholderReplacementKeys.map((key: string): string => {
+    const keyIndex = placeholderReplacementKeys.indexOf(key)
     const keyValue = dynamicValues[keyIndex]
     return keyValue
   })
-  if (issueReplacements.length > 0) {
+  if (placeholderReplacements.length > 0) {
     issue = issue.replace(/\{\{[^}]+\}\}/g, () => {
-      return issueReplacements.shift()
+      return placeholderReplacements.shift()
     })
   }
 
