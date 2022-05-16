@@ -73,7 +73,7 @@ export const fileIssues = {
   readModelNoEntitiesProjected: "🔭 Read Model '{{readModelName}}' does not project any entities",
   readModelNoMatchingEntityProjected: "🔭 Read Model '{{readModelName}}' does not project at least one of these entities: {{expectedEntities}}",
   readModelAuthMissing: "🔭 Read Model '{{readModelName}}' does not have authorization defined (expecting {{expectedReadRoles}})",
-  readModelAuthIncorrect: "🔭 Read Model '{{readModelName}}' oes not have correct authorization (expecting {{expectedReadRoles}})",
+  readModelAuthIncorrect: "🔭 Read Model '{{readModelName}}' does not have correct authorization (expecting {{expectedReadRoles}})",
 
   eventFileMissing: "🚀 Event file missing: '{{filePath}}'",
   eventPathTriggerToEntityMissing: "🚀 Cannot find event path from trigger to entity '{{entityName}}'",
@@ -103,8 +103,8 @@ export const confirmationIssues = {
   stateUpdateNotFieldPresent: "   ↪ Field '{{fieldName}}' is present (should not be present with any value)",
 
   visibleUpdateErrorHeading: "🔭 Read model '{{readModelName}}' was not updated as expected\n",
-  visibleUpdateItemNotFound: 'Could not find item - expected to find:\n{{values}}',
-  visibleUpdateNotItemFound: 'Found item that should NOT exist or be visible - was able to find:\n{{values}}',
+  visibleUpdateItemNotFound: 'Could not find item\n{{expectedValues}}\nUsed query filter:\n{{queryFilterString}}',
+  visibleUpdateNotItemFound: 'Found item that should NOT exist or be visible\n{{notValues}}\nUsed query filter:\n{{queryFilterString}}',
 }
 
 export const addMessage = (issueString: string, dynamicValues?: string[]): string | string[] => {
@@ -118,7 +118,7 @@ export const addMessage = (issueString: string, dynamicValues?: string[]): strin
   // replace issue message with dynamic values (in order they appear in the array)
   const placeholderReplacements = placeholderReplacementKeys.map((key: string): string => {
     const keyIndex = placeholderReplacementKeys.indexOf(key)
-    const keyValue = dynamicValues[keyIndex]
+    const keyValue = dynamicValues?.[keyIndex]
     return keyValue
   })
   if (placeholderReplacements.length > 0) {
