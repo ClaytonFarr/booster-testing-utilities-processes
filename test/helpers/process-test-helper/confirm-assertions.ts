@@ -319,22 +319,34 @@ export const confirmAssertions = async (
                   // ...check if every item in valueArray is present in matchingUpdateValue array
                   for (const item of valueArray) {
                     const itemType = util.inferValueType(item)
+
                     // ...if item to check is a string, number, boolean, UUID
                     if (itemType !== 'object' && itemType !== 'array')
                       expectedState = matchingUpdateValue.includes(item)
-                    // ...if item to check is an object or array
-                    if (itemType === 'object' || itemType === 'array')
+
+                    // ...if item to check is an object
+                    if (itemType === 'object') {
+                      const itemChecks = []
+                      for (const [key, value] of Object.entries(item)) {
+                        // ...find item in matchingUpdateValue array that has matching key
+                        const matchingItem = matchingUpdateValue.find((item) => item[key] === value)
+                        // ...check that matchingItem has matching key and value
+                        const itemCheck = matchingItem && matchingItem[key] === value
+                        itemChecks.push(itemCheck)
+                      }
+                      expectedState = !itemChecks.includes(false)
+                    }
+                    // ...if item to check is an array
+                    if (itemType === 'array') {
                       expectedState = matchingUpdateValue.includes(JSON.stringify(item))
+                    }
                   }
-                  expectedState = valueArray.every((value) =>
-                    matchingUpdateValue.some((matchingValue) =>
-                      JSON.stringify(matchingValue).includes(JSON.stringify(value))
-                    )
-                  )
+
                   if (!matchingUpdateValue) {
                     expectedState = false
                     stateUpdateCheckErrors.push(msg(is.stateUpdateFieldValueObjectMissing, [key]))
                   }
+
                   if (!expectedState) {
                     const stateValue = JSON.stringify(matchingUpdate.value[key])
                     const expectedValue = JSON.stringify(value)
