@@ -440,14 +440,14 @@ export const confirmAssertions = async (
             }
             // if no items found for shouldHave
             if (shouldHaveItems.length === 0) {
-              const foundValues = JSON.stringify(visibleUpdate.values)
-              scenarioIssues.push(msg(is.visibleUpdateItemNotFound, [foundValues]))
+              const expectedValues = JSON.stringify(visibleUpdate.values)
+              scenarioIssues.push(msg(is.visibleUpdateItemNotFound, [expectedValues]))
             }
 
             // if any items found for shouldNotHave
             if (shouldNotHaveItems.length > 0) {
-              const foundValues = JSON.stringify(visibleUpdate.values)
-              scenarioIssues.push(msg(is.visibleUpdateNotItemFound, [foundValues]))
+              const expectedValues = JSON.stringify(visibleUpdate.values)
+              scenarioIssues.push(msg(is.visibleUpdateNotItemFound, [expectedValues]))
             }
           }
         }
