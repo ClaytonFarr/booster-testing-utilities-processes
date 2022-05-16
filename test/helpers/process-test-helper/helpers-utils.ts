@@ -92,7 +92,7 @@ export const inferGraphQLValueType = (val: string | number | boolean | UUID): st
         type = 'String'
         break
       case 'number':
-        type = 'Int'
+        type = 'Float'
         break
       case 'true':
       case 'false':
@@ -111,7 +111,7 @@ export const inferGraphQLValueType = (val: string | number | boolean | UUID): st
     switch (valType) {
       case 'bigint':
       case 'number':
-        type = 'Int'
+        type = 'Float'
         break
       case 'boolean':
         type = 'Boolean'
