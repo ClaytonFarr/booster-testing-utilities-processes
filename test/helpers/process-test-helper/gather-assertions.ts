@@ -225,12 +225,13 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
   const allScenarioReadModelsMerged: types.AssertionReadModel[] = []
   for (const readModel of allScenarioReadModelsData) {
     // ...if read model not yet in scenarioEntitiesMerged add it
-    if (!allScenarioReadModelsMerged.some((scenario) => scenario.readModelName === readModel.readModelName)) {
+    if (!allScenarioReadModelsMerged.some((rm) => rm.readModelName === readModel.readModelName)) {
       allScenarioReadModelsMerged.push(readModel)
     } else {
       // ...if read model already exists in allScenarioReadModelsMerged merge additional data
       const matchedIndex = allScenarioReadModelsMerged.findIndex((rm) => rm.readModelName === readModel.readModelName)
       const existingReadModel = allScenarioReadModelsMerged[matchedIndex]
+      // ...merge any new field types
       for (const field of readModel.fields) {
         const existingField = existingReadModel.fields.find((f) => f.fieldName === field.fieldName)
         if (existingField) {
@@ -243,6 +244,11 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
           existingReadModel.fields.push(field)
         }
       }
+      // ...merge authorization
+      const existingAuthorized = existingReadModel.authorized
+      const newAuthorized = readModel.authorized
+      const mergedAuthorized = [...new Set([...existingAuthorized, ...newAuthorized])]
+      existingReadModel.authorized = mergedAuthorized
     }
   }
   // ...reduce duplicate fieldName in values within each read model
