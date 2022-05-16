@@ -96,6 +96,7 @@ export const confirmationIssues = {
   stateUpdateNotFound: "👽 No matching state update found for entity '{{entityName}}'\nSearched for key: '{{primaryKey}}'",
   stateUpdateFieldValueIncorrect: "   ↪ Field '{{fieldName}}' value is '{{value}}' (expected '{{expectedValue}}')",
   stateUpdateFieldValueMissing: "   ↪ Field '{{fieldName}}' is missing (with any '{{fieldType}}' value)",
+  stateUpdateFieldValueObjectMissing: "   ↪ Field '{{fieldName}}' is missing",
   stateUpdateFieldValueObjectIncorrect: "Field '{{fieldName}}' value is:\n{{value}}\nExpected:\n{{expectedValue}}",
   stateUpdateFieldValueNotArray: "   ↪ Field '{{fieldName}}' expects an array and the matching updated field type is '{{fieldType}}'",
   stateUpdateNotFieldValuePresent: "   ↪ Field '{{fieldName}}' with '{{stateValue}}' value found (should not be present)",
