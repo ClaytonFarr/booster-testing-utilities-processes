@@ -34,7 +34,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
     const rolesFilePath = path.rolesPath
     const rolesFileExists = fs.existsSync(rolesFilePath)
     if (!rolesFileExists) {
-      issues.push(msg(is.rolesFileMissing), [rolesFilePath])
+      issues.push(msg(is.rolesFileMissing, [rolesFilePath]))
     }
 
     if (rolesFileExists) {
@@ -48,7 +48,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
         if (Array.isArray(missingRoles) && missingRoles.length > 0) {
           const missingRolesPascalCase = missingRoles.map((role) => util.toPascalCase(role))
           const missingRolesUnique = [...new Set(missingRolesPascalCase)]
-          issues.push(msg(is.rolesMissing), [missingRolesUnique.join(', ')])
+          issues.push(msg(is.rolesMissing, [missingRolesUnique.join(', ')]))
         }
       }
     }
@@ -65,7 +65,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
   const triggerFilePath = `${triggerFileDirectory}/${triggerFileName}.ts`
   const triggerFileExists = fs.existsSync(triggerFilePath)
   if (!triggerFileExists) {
-    issues.push(msg(is.triggerFileMissing), [triggerFilePath])
+    issues.push(msg(is.triggerFileMissing, [triggerFilePath]))
   }
   let triggerFile: string
   if (triggerFileExists) triggerFile = fs.readFileSync(triggerFilePath, 'utf8')
@@ -89,11 +89,11 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
     const expectedWriteRoles = writeRoles.length === 0 ? "'all'" : writeRoles.join(', ')
     // alert if trigger missing any authorization definition
     if (!triggerHasAuthorization) {
-      issues.push(msg(is.triggerAuthMissing), [expectedWriteRoles])
+      issues.push(msg(is.triggerAuthMissing, [expectedWriteRoles]))
     }
     // alert if trigger missing correct authorization definition
     if (triggerHasAuthorization && !triggerHasCorrectAuthorization) {
-      issues.push(msg(is.triggerAuthIncorrect), [expectedWriteRoles])
+      issues.push(msg(is.triggerAuthIncorrect, [expectedWriteRoles]))
     }
   }
 
@@ -120,7 +120,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
           for (const [key] of Object.entries(scenario.inputs)) expectedInputNames.push(util.toCamelCase(key))
       }
       expectedInputNames = [...new Set(expectedInputNames)].sort()
-      issues.push(msg(is.triggerInputsMissing), [expectedInputNames.join(', ')])
+      issues.push(msg(is.triggerInputsMissing, [expectedInputNames.join(', ')]))
     }
 
     if (triggerInputs && triggerInputs.length > 0) {
@@ -175,13 +175,13 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       // alert if any inputs are missing
       if (missingInputs && missingInputs.length > 0) {
         for (const missingInput of missingInputs) {
-          issues.push(msg(is.triggerInputMissing), [missingInput.name, missingInput.type.join(', ')])
+          issues.push(msg(is.triggerInputMissing, [missingInput.name, missingInput.type.join(', ')]))
         }
       }
       // alert if any inputs are mismatched
       if (incorrectTypeInputs && incorrectTypeInputs.length > 0) {
         for (const incorrectTypeInput of incorrectTypeInputs) {
-          issues.push(msg(is.triggerInputMissingTypes), [incorrectTypeInput.name, incorrectTypeInput.type.join(', ')])
+          issues.push(msg(is.triggerInputMissingTypes, [incorrectTypeInput.name, incorrectTypeInput.type.join(', ')]))
         }
       }
       // alert if any inputs required status is mismatched
@@ -190,7 +190,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
           if (incorrectRequiredInput.name !== 'tid') {
             const expectedRequire = incorrectRequiredInput.expectedRequire ? 'required' : 'optional'
             const triggerFileRequire = incorrectRequiredInput.triggerRequire ? 'required' : 'optional'
-            issues.push(msg(is.triggerInputRequireIncorrect), [expectedRequire, triggerFileRequire])
+            issues.push(msg(is.triggerInputRequireIncorrect, [expectedRequire, triggerFileRequire]))
           }
         }
       }
@@ -206,7 +206,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       (event) => !event.toLowerCase().startsWith('new date') && !event.toLowerCase().startsWith('new error')
     )
     if (!triggerRegisteredEvents || triggerRegisteredEvents.length === 0) {
-      issues.push(msg(is.triggerCommandNoEvents), [util.toPascalCase(assertions.trigger.commandName)])
+      issues.push(msg(is.triggerCommandNoEvents, [util.toPascalCase(assertions.trigger.commandName)]))
     }
     if (triggerRegisteredEvents) {
       triggerRegisteredEvents = triggerRegisteredEvents.map((event) => event.replace(/new/g, '').trim())
@@ -224,7 +224,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       const paCommandFilePath = `${path.commandsDirectoryPath}/${paCommandFileName}.ts`
       const paCommandFileExists = fs.existsSync(paCommandFilePath)
       if (!paCommandFileExists) {
-        issues.push(msg(is.paCommandFileMissing), [paCommandFilePath])
+        issues.push(msg(is.paCommandFileMissing, [paCommandFilePath]))
       }
       let paCommandFile: string
       if (paCommandFileExists) paCommandFile = fs.readFileSync(paCommandFilePath, 'utf8')
@@ -251,11 +251,11 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
         const expectedWriteRoles = writeRoles.length === 0 ? "'all'" : writeRoles.join(', ')
         // alert if command missing any authorization definition
         if (!paCommandHasAuthorization) {
-          issues.push(msg(is.paCommandAuthMissing), [paCommandNameFormatted, expectedWriteRoles])
+          issues.push(msg(is.paCommandAuthMissing, [paCommandNameFormatted, expectedWriteRoles]))
         }
         // alert if command missing correct authorization definition
         if (paCommandHasAuthorization && !paCommandHasCorrectAuthorization) {
-          issues.push(msg(is.paCommandAuthIncorrect), [paCommandNameFormatted, expectedWriteRoles])
+          issues.push(msg(is.paCommandAuthIncorrect, [paCommandNameFormatted, expectedWriteRoles]))
         }
       }
 
@@ -277,7 +277,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
         // alert if PA command has no inputs defined
         if (!commandInputs || commandInputs.length === 0) {
           const expectedInputNames = paInputs.map((input) => input.name).join(', ')
-          issues.push(msg(is.paCommandInputsMissing), [paCommandNameFormatted, expectedInputNames])
+          issues.push(msg(is.paCommandInputsMissing, [paCommandNameFormatted, expectedInputNames]))
         }
 
         if (commandInputs && commandInputs.length > 0) {
@@ -465,7 +465,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
     const MissingReadModelsUnique = [...new Set(missingReadModels)]
     for (const missingReadModel of MissingReadModelsUnique) {
       const missingReadModelFilePath = `${path.readModelsDirectoryPath}/${missingReadModel}.ts`
-      issues.push(msg(is.readModelFieldMissing, [missingReadModelFilePath]))
+      issues.push(msg(is.readModelFileMissing, [missingReadModelFilePath]))
     }
   }
 
@@ -552,7 +552,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       const readModelFile = fs.readFileSync(readModelFilePath, 'utf8')
       const readModelProjectedEntityNames = readModelFile.match(/(?<=@Projects\()(.*)(?=,)/gm)
       if (!readModelProjectedEntityNames) {
-        issues.push(msg(is.readModelNoEntitiesProjected), [readModelNameFormatted])
+        issues.push(msg(is.readModelNoEntitiesProjected, [readModelNameFormatted]))
       }
       if (readModelProjectedEntityNames) {
         readModelProjectedEntityNames.forEach((projectedEntityName) => {
@@ -597,11 +597,12 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       const expectedReadRoles = !Array.isArray(assertedReadModelRoles) ? "'all'" : assertedReadModelRoles.join(', ')
       // alert if read model missing any authorization definition
       if (!readModelHasAuthorization) {
-        issues.push(msg(is.readModelAuthMissing), [readModelNameFormatted, expectedReadRoles])
+        issues.push(msg(is.readModelAuthMissing, [readModelNameFormatted, expectedReadRoles]))
       }
+
       // alert if read model missing correct authorization definition
       if (readModelHasAuthorization && !readModelHasCorrectAuthorization) {
-        issues.push(msg(is.readModelAuthIncorrect), [readModelNameFormatted, expectedReadRoles])
+        issues.push(msg(is.readModelAuthIncorrect, [readModelNameFormatted, expectedReadRoles]))
       }
     }
   }
@@ -615,7 +616,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       const eventFileName = util.toKebabCase(eventName)
       const eventFilePath = `${path.eventsDirectoryPath}/${eventFileName}.ts`
       if (!fs.existsSync(eventFilePath)) {
-        issues.push(msg(is.eventFileMissing), [eventFilePath])
+        issues.push(msg(is.eventFileMissing, [eventFilePath]))
       }
     })
   }
@@ -631,7 +632,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       const entityFile = fs.readFileSync(entityFilePath, 'utf8')
       const eventsReduced = entityFile.match(/@Reduces\((\w+)/gs)
       if (!eventsReduced) {
-        issues.push(msg(is.entityNoEventsReduced), [entityNameFormatted])
+        issues.push(msg(is.entityNoEventsReduced, [entityNameFormatted]))
       }
       if (eventsReduced) {
         eventsReduced.forEach((eventReduced) => {
@@ -678,7 +679,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
           })
           // if no event handlers register an event reduced by the entity, exit this check with error
           if (triggerFile && !matchingEventFound && eventHandlersMatchingEntity.length === 0) {
-            issues.push(msg(is.eventPathTriggerToEntityMissing), [entityNameFormatted])
+            issues.push(msg(is.eventPathTriggerToEntityMissing, [entityNameFormatted]))
           }
           // if there is a matching event handler, check if its initiating event matches an event registered by trigger file
           if (triggerFile && !matchingEventFound && eventHandlersMatchingEntity.length > 0) {
@@ -689,7 +690,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
             })
             // if no match found between entity : 1 event handler : trigger, exit this check with error
             // LATER: possibly refactor to check farther up event handler chain to trigger than 1 file
-            issues.push(msg(is.eventPathTriggerToHandlerToEntityMissing), [entityNameFormatted])
+            issues.push(msg(is.eventPathTriggerToHandlerToEntityMissing, [entityNameFormatted]))
           }
         }
       }
