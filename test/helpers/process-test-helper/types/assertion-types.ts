@@ -8,8 +8,8 @@ export interface AssertionInput {
   required: boolean
 }
 export interface AssertionValue {
-  fieldName: string
-  fieldTypes: string[]
+  name: string
+  types: string[]
 }
 export interface AssertionPrecedingAction {
   commandName: string
@@ -29,18 +29,19 @@ export interface AssertionReadModel {
   fields: AssertionValue[]
   authorized: 'all' | string[]
 }
+export interface GatheredRoles {
+  triggerWrite: string[] // trigger command write roles
+  paWrite: string[] // preceding action write roles
+  read: string[]
+  all: string[]
+}
 export interface Assertions {
   processName: string
   trigger: ActorCommand | ScheduledCommand
   scenarios: Scenario[]
-  roles: {
-    triggerWrite: string[] // trigger command write roles
-    paWrite: string[] // preceding action write roles
-    read: string[]
-    all: string[]
-  }
+  roles: GatheredRoles
   precedingActions?: AssertionPrecedingActionSet[]
-  allInputs: AssertionInput[]
+  allScenarioInputs: AssertionInput[]
   allEntities: AssertionEntity[]
   allReadModels?: AssertionReadModel[]
 }
