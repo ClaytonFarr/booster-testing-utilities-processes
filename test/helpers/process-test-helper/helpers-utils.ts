@@ -1,8 +1,15 @@
+import type { UUID } from '@boostercloud/framework-types'
+
 // Miscellaneous Helpers
 // ====================================================================================
 
-import type { UUID } from '@boostercloud/framework-types'
-import * as types from './types'
+// Constants
+// -----------------------------------------------------------------------------------
+
+export const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Strings
+// -----------------------------------------------------------------------------------
 
 export const toKebabCase = (str: string): string =>
   str
@@ -38,7 +45,7 @@ export const toPascalCase = (str: string): string => {
     .replace(/[\s_-]+/g, '')
 }
 
-export const toSentenceCase = (str: string): string =>
+export const toTitleCase = (str: string): string =>
   str
     .replace(/([a-z])([A-Z])/g, '$1-$2')
     .replace(/[\s_-]+/g, ' ')
@@ -47,7 +54,45 @@ export const toSentenceCase = (str: string): string =>
       index === 0 ? leftTrim.toUpperCase() : leftTrim.toUpperCase()
     )
 
-export const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// Arrays
+// -----------------------------------------------------------------------------------
+
+export const stringArrayHasDuplicates = (array: string[]): boolean => new Set(array).size !== array.length
+
+// JSON
+// -----------------------------------------------------------------------------------
+export const isStringJson = (testString: string): boolean => {
+  try {
+    JSON.parse(testString)
+  } catch (e) {
+    return false
+  }
+  return true
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const looseJSONparse = (JSONstring: string): any => Function('"use strict";return (' + JSONstring + ')')()
+
+export const convertObjectToJsonString = (obj: Record<string, unknown>, wrapInBrackets = true): string => {
+  let json = wrapInBrackets ? '{ ' : ''
+  for (const key in obj) {
+    // eslint-disable-next-line no-prototype-builtins
+    if (obj.hasOwnProperty(key)) {
+      const value = obj[key]
+      const valueType = inferValueType(value)
+      let formattedValue = value
+      if (valueType === 'string') formattedValue = `"${value}"`
+      if (valueType === 'object') formattedValue = convertObjectToJsonString(value as Record<string, unknown>)
+      if (valueType === 'array') formattedValue = `[${value}]`
+      json += `${key}: ${formattedValue}, `
+    }
+  }
+  json += wrapInBrackets ? '}' : ''
+  return json
+}
+
+// Infer value types
+// -----------------------------------------------------------------------------------
 
 export const inferValueType = (
   val: string | number | boolean | Record<string, unknown> | unknown[] | UUID | unknown
@@ -142,21 +187,6 @@ export const valueIsTypeKeyword = (val: unknown): boolean => {
   return check
 }
 
-export const authIncludesAll = (auth: string | string[]): boolean => {
-  let check: boolean
-  if (typeof auth === 'string') check = auth.toLowerCase() === 'all'
-  if (typeof auth !== 'string') check = auth.join('|').toLowerCase().includes('all')
-  return check
-}
-
-export const gatherRoles = (auth: string | string[]): string[] => {
-  let roles: string[]
-  if (authIncludesAll(auth)) roles = ['all']
-  if (typeof auth === 'string' && !authIncludesAll(auth)) roles.push(toPascalCase(auth))
-  if (typeof auth !== 'string' && !authIncludesAll(auth)) roles = auth.map((role) => toPascalCase(role))
-  return roles
-}
-
 export const convertKeyValueToNameAndType = (key: string, value: unknown): { name: string; types: string[] } => {
   return {
     name: toCamelCase(key),
@@ -164,48 +194,10 @@ export const convertKeyValueToNameAndType = (key: string, value: unknown): { nam
   }
 }
 
-export const hasDuplicates = (array: string[]): boolean => new Set(array).size !== array.length
+// Delay
+// -----------------------------------------------------------------------------------
 
-export const convertObjectToJsonString = (obj: Record<string, unknown>, wrapInBrackets = true): string => {
-  let json = wrapInBrackets ? '{ ' : ''
-  for (const key in obj) {
-    // eslint-disable-next-line no-prototype-builtins
-    if (obj.hasOwnProperty(key)) {
-      const value = obj[key]
-      const valueType = inferValueType(value)
-      let formattedValue = value
-      if (valueType === 'string') formattedValue = `"${value}"`
-      if (valueType === 'object') formattedValue = convertObjectToJsonString(value as Record<string, unknown>)
-      if (valueType === 'array') formattedValue = `[${value}]`
-      json += `${key}: ${formattedValue}, `
-    }
-  }
-  json += wrapInBrackets ? '}' : ''
-  return json
-}
-
-export const convertScenarioInputsToCommandInputs = (
-  scenarioInputs: Record<string, string | number | boolean | UUID>,
-  inputAssertions: types.AssertionInput[]
-): types.CommandInput[] => {
-  const commandInputs: types.CommandInput[] = []
-  for (const [key, value] of Object.entries(scenarioInputs)) {
-    const required = inputAssertions.find((assertion) => assertion.name === key)?.required ?? false
-    commandInputs.push({
-      name: toCamelCase(key),
-      type: inferGraphQLValueType(value),
-      validExample: value,
-      required,
-    })
-  }
-  return commandInputs
-}
-
-export async function setEnvVar(VAR_NAME: string, varValue: string): Promise<void> {
-  process.env[VAR_NAME] = varValue
-}
-
-export async function sleep(ms: number): Promise<void> {
+export async function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
@@ -217,39 +209,14 @@ export async function waitForIt<TResult>(
 ): Promise<TResult> {
   const start = Date.now()
   return doWaitFor()
-
   async function doWaitFor(): Promise<TResult> {
-    // console.debug('[waitForIt] Executing function')
     const res = await tryFunction()
-    // console.debug('[waitForIt] Checking result')
     const expectedResult = checkResult(res)
-    if (expectedResult) {
-      // console.debug('[waitForIt] Result is expected. Wait finished.')
-      return res
-    }
-    // console.debug('[waitForIt] Result is not expected. Keep trying...')
+    if (expectedResult) return res
     const elapsed = Date.now() - start
-    // console.debug('[waitForIt] Time elapsed (ms): ' + elapsed)
-
-    if (elapsed > timeoutMs) {
-      throw new Error('[waitForIt] Timeout reached waiting for a successful execution')
-    }
-
+    if (elapsed > timeoutMs) throw new Error('[waitForIt] Timeout reached waiting for a successful execution')
     const nextExecutionDelay = (timeoutMs - elapsed) % tryEveryMs
-    // console.debug('[waitForIt] Trying again in ' + nextExecutionDelay)
-    await sleep(nextExecutionDelay)
+    await delay(nextExecutionDelay)
     return doWaitFor()
   }
 }
-
-export const isStringJSON = (testString: string): boolean => {
-  try {
-    JSON.parse(testString)
-  } catch (e) {
-    return false
-  }
-  return true
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const looseJSONparse = (JSONstring: string): any => Function('"use strict";return (' + JSONstring + ')')()
