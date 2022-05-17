@@ -1,4 +1,5 @@
 import * as types from './types'
+import * as auth from './helpers-authorization'
 import * as util from './helpers-utils'
 
 export const gatherAssertions = (process: types.Process): types.Assertions => {
@@ -58,14 +59,14 @@ export const gatherScenarioInfo = (process: types.Process): types.Scenario[] => 
 export const gatherRoles = (process: types.Process): types.GatheredRoles => {
   // ...gather write roles if an actor command (trigger will have either 'all' OR one or more roles)
   let triggerWriteRoles: string[] = []
-  if (process.trigger.type === 'ActorCommand') triggerWriteRoles = util.gatherRoles(process.trigger.authorized)
+  if (process.trigger.type === 'ActorCommand') triggerWriteRoles = auth.gatherRoles(process.trigger.authorized)
 
   // ...gather any write roles across scenario preceding actions
   let paWriteRoles: string[] = []
   for (const scenario of process.scenarios) {
     if (scenario.precedingActions) {
       for (const action of scenario.precedingActions) {
-        const paWriteRolesSet = util.gatherRoles(action.authorized)
+        const paWriteRolesSet = auth.gatherRoles(action.authorized)
         paWriteRoles = paWriteRoles.concat(paWriteRolesSet)
       }
     }
@@ -77,7 +78,7 @@ export const gatherRoles = (process: types.Process): types.GatheredRoles => {
   for (const scenario of process.scenarios) {
     if (scenario.expectedVisibleUpdates) {
       for (const expectedVisibleUpdate of scenario.expectedVisibleUpdates) {
-        const readRolesSet = util.gatherRoles(expectedVisibleUpdate.authorized)
+        const readRolesSet = auth.gatherRoles(expectedVisibleUpdate.authorized)
         readRoles = readRoles.concat(readRolesSet)
       }
     }
