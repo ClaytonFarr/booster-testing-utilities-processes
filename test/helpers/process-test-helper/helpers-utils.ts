@@ -157,6 +157,13 @@ export const gatherRoles = (auth: string | string[]): string[] => {
   return roles
 }
 
+export const convertKeyValueToNameAndType = (key: string, value: unknown): { name: string; types: string[] } => {
+  return {
+    name: toCamelCase(key),
+    types: [inferValueType(value as string)],
+  }
+}
+
 export const hasDuplicates = (array: string[]): boolean => new Set(array).size !== array.length
 
 export const convertObjectToJsonString = (obj: Record<string, unknown>, wrapInBrackets = true): string => {
