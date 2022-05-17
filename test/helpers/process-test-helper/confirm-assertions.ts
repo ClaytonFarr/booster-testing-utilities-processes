@@ -24,7 +24,7 @@ export const confirmAssertions = async (
 
   // Confirm assertions data is present
   // ===============================================================================================
-  const expectedAssertionGroups = ['trigger', 'scenarios', 'roles', 'allInputs', 'allEntities']
+  const expectedAssertionGroups = ['trigger', 'scenarios', 'roles', 'allScenarioInputs', 'allEntities']
   if (
     Object.keys(assertions).length === 0 ||
     !expectedAssertionGroups.every((key) => Object.keys(assertions).includes(key))
@@ -44,7 +44,7 @@ export const confirmAssertions = async (
     // -----------------------------------------------------------------------------------------------
     const triggerCommandName = assertions.trigger.commandName
     const triggerSubmitRoles = assertions.roles.triggerWrite
-    const triggerInputAssertions = assertions.allInputs
+    const triggerInputAssertions = assertions.allScenarioInputs
     const triggerInputValues = assertions.scenarios.reduce((acc, scenario) => {
       acc = { ...acc, ...scenario.inputs }
       return acc
