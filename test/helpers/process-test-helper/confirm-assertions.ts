@@ -5,6 +5,7 @@ import { faker } from '@faker-js/faker'
 import { addMessage as msg, confirmationIssues as is } from './issue-messages'
 import * as command from './helpers-command'
 import * as readModel from './helpers-readmodel'
+import * as auth from './helpers-authorization'
 import * as type from './types'
 import * as util from './helpers-utils'
 import * as log from './reporter'
@@ -55,7 +56,7 @@ export const confirmAssertions = async (
     const triggerGraphQLclient = triggerSubmitRoles.includes('all')
       ? unAuthGraphQLclient
       : authGraphQLclient(triggerSubmitRoles[0])
-    const triggerDefaultTestInputs: type.CommandInput[] = util.convertScenarioInputsToCommandInputs(
+    const triggerDefaultTestInputs: type.CommandInput[] = command.convertScenarioInputsToCommandInputs(
       triggerInputValues,
       triggerInputAssertions
     )
@@ -83,7 +84,7 @@ export const confirmAssertions = async (
     if (!triggerSubmitRoles.includes('all') && triggerSubmitRoles.length > 2) {
       triggerSubmitRoles.shift() // skip first role since already tested above if present
       triggerSubmitRoles.forEach(async (role) => {
-        const check = await command.wasAuthorizedRequestAllowed(role, triggerDefaultMutation, triggerDefaultVariables)
+        const check = await auth.wasAuthorizedRequestAllowed(role, triggerDefaultMutation, triggerDefaultVariables)
         if (!check) {
           issues.push(msg(is.triggerBlockingAuthorizedRole, [role, util.toPascalCase(triggerCommandName)]))
         }
@@ -149,7 +150,7 @@ export const confirmAssertions = async (
               )
 
               // ...select appropriate role + client
-              const paCommandRoles = util.gatherRoles(action.authorized)
+              const paCommandRoles = auth.gatherRoles(action.authorized)
               const paCommandGraphQLclient = paCommandRoles?.includes('all')
                 ? unAuthGraphQLclient
                 : authGraphQLclient(paCommandRoles[0])
@@ -159,7 +160,7 @@ export const confirmAssertions = async (
               const paCommandInputValues = correspondingScenarioPa?.inputs
               const tid = (paCommandInputValues?.tid as string) ?? faker.datatype.uuid().toString() // test reference ID
               const commandInputs = { tid, ...paCommandInputValues } // add tid input variable if not defined in scenario
-              const acceptedInputs: type.CommandInput[] = util.convertScenarioInputsToCommandInputs(
+              const acceptedInputs: type.CommandInput[] = command.convertScenarioInputsToCommandInputs(
                 commandInputs,
                 paCommandInputAssertions
               )
@@ -197,7 +198,7 @@ export const confirmAssertions = async (
 
       // ...create specific test resources
       const scenarioInputs = { tid, ...scenario.inputs } // add tid input if not defined in scenario
-      const acceptedInputs: type.CommandInput[] = util.convertScenarioInputsToCommandInputs(
+      const acceptedInputs: type.CommandInput[] = command.convertScenarioInputsToCommandInputs(
         scenarioInputs,
         triggerInputAssertions
       )
