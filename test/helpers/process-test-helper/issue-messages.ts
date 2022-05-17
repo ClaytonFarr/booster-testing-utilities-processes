@@ -6,7 +6,7 @@ export const assertionIssues = {
   processNameBlank: 'Process name is blank',
 
   triggerNameBlank: 'Trigger: command name is blank',
-  triggerAuthBlank: 'Trigger: authorization is blank',
+  triggerAuthEmpty: 'Trigger: authorization is blank',
 
   scenariosNotDefined: 'Scenario: no scenarios are defined',
   scenariosNameBlank: 'Scenario: one or more scenario names are blank',
@@ -17,7 +17,7 @@ export const assertionIssues = {
 
   scenarioPaCommandNameBlank: 'A preceding action has a blank command name',
   scenarioPaInputsEmpty: "The preceding action for '{{commandName}}' has no inputs",
-  scenarioPaAuthBlank: "The preceding action for '{{commandName}}' has no authorized roles",
+  scenarioPaAuthEmpty: "The preceding action for '{{commandName}}' has no authorized roles",
 
   scenarioSuEmpty: 'Scenario has no expected state update(s)',
   scenarioSuEntityNameBlank: 'State update has a blank entity name',
@@ -34,7 +34,6 @@ export const assertionIssues = {
   scenarioVuRmValuesFieldBlank: "Visible update for `values` field '{{fieldName}}' has a blank value",
   scenarioVuRmNotValuesFieldBlank: "Visible update for `notValues` field '{{fieldName}}' has a blank value",
   scenarioVuRmNAuthEmpty: "Visible update for '{{readModelName}}' has no authorization defined",
-  scenarioVuRmNAuthRolesOutsideArray: "Visible update for '{{readModelName}}' roles should be inside an array (if not 'all')",
 }
 
 export const fileIssues = {
