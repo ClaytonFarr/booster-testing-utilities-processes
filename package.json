@@ -35,7 +35,9 @@
     "test:local:unit": "TESTED_PROVIDER=LOCAL BOOSTER_ENV=test nyc --extension .ts vitest --dir \"test/unit\" --ui",
     "test:local:integration": "TESTED_PROVIDER=LOCAL BOOSTER_ENV=test nyc --extension .ts vitest --dir \"test/integration --ui",
     "---": "",
-    "test:live": "boost deploy -e test; TESTED_PROVIDER=AWS AWS_SDK_LOAD_CONFIG=true BOOSTER_ENV=test nyc --extension .ts vitest; boost nuke -e test --force"
+    "test:live": "boost deploy -e test; TESTED_PROVIDER=AWS AWS_SDK_LOAD_CONFIG=true BOOSTER_ENV=test nyc --extension .ts vitest; boost nuke -e test --force",
+    "----": "",
+    "test:process-tools": "nyc --extension .ts vitest --dir test/helpers/process-test-helper/tests --reporter verbose"
   },
   "dependencies": {
     "@boostercloud/framework-core": "^0.28.0",
