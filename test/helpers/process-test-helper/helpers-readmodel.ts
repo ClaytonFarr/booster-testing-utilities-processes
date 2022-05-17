@@ -5,8 +5,11 @@ import type { DocumentNode } from 'graphql'
 import * as util from './helpers-utils'
 import gql from 'graphql-tag'
 
+// Read Model Helpers
+// ====================================================================================
+
 // Read Model Queries
-// =====================================================================================================================
+// -----------------------------------------------------------------------------------
 
 export const createQueryFilterString = (
   fields: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>
@@ -22,14 +25,13 @@ export const createQueryFilterString = (
     (field: { fieldName: string; value: string | number | UUID | Record<string, unknown> | unknown[] }) => {
       const valueTypeIsKeyword = util.valueIsTypeKeyword(field.value)
       const valueType = util.inferValueType(field.value)
-
       if (valueTypeIsKeyword) {
         filterString += `${field.fieldName}: { isDefined: true }, `
       }
       if (!valueTypeIsKeyword) {
         // currently limited to filters from strings, numbers, and booleans
         // JSON or stringified JSON value checks will be ignored
-        if (valueType === 'string' && !util.isStringJSON(field.value as string)) {
+        if (valueType === 'string' && !util.isStringJson(field.value as string)) {
           filterString += `${field.fieldName}: { contains: "${field.value}" }, `
         }
         if (valueType === 'number' || valueType === 'boolean') {
@@ -112,20 +114,16 @@ export const evaluateReadModelProjection = async (
     fieldItems.push({ fieldName: key, value })
   }
   const fieldsToReturn = [...fieldNames].join(',')
-
   // ...create filter string
   const filterString = createQueryFilterString(fields)
-
   // ...build query
   const filterBy = util.looseJSONparse(filterString)
   const limitTo = limitResultsTo
   const queryVariables = createQueryVariables(filterBy, sortBy, limitTo)
   const connectionQuery = createReadModelQuery(readModel, fieldsToReturn)
-
   // ...make query
   const { data } = await graphQLclient.query({ query: connectionQuery, variables: queryVariables })
   const items = data[`List${readModel}s`].items
-
   return items
 }
 

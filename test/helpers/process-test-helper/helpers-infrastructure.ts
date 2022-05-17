@@ -7,10 +7,12 @@ import CustomLocalTestHelper from '../custom-local-test-helper/local-test-helper
 import { testApplicationName } from '../../constants'
 import * as c from 'colorette'
 
+// Infrastructure Helpers
+// ====================================================================================
 const log = console.log
 
 // Test Infrastructure Setup
-// ====================================================================================
+// ------------------------------------------------------------------------------------
 
 // create test application based on environment variable passed to test
 export async function getProviderTestHelper(): Promise<ProviderTestHelper> {
