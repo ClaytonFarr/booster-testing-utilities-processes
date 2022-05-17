@@ -195,7 +195,7 @@ export const scenarioNameBlank = (process: type.Process): boolean =>
   process.scenarios.some((scenario) => !scenario.name)
 export const scenariosHaveDuplicateNames = (process: type.Process): boolean => {
   const scenarioNames = process.scenarios.map((scenario) => scenario.name)
-  return util.hasDuplicates(scenarioNames)
+  return util.stringArrayHasDuplicates(scenarioNames)
 }
 
 // Scenario: Preceding Actions

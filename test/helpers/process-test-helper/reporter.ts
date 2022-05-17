@@ -1,10 +1,10 @@
 import * as c from 'colorette'
 import * as util from './helpers-utils'
 
+const logWidth = 60
+
 const log = console.log
 // const table = console.table
-
-const logWidth = 60
 
 const icon = {
   right: '→',
@@ -89,7 +89,7 @@ export const issueGroupSubheader = (heading: string): void => {
 export const issueNote = (note: string | string[]): void => {
   if (typeof note === 'string') {
     // if a single note
-    if (util.isStringJSON(note)) {
+    if (util.isStringJson(note)) {
       // ...check if note is JSON and present as table
       // table(JSON.parse(note))
       log(JSON.stringify(JSON.parse(note), null, 2))
@@ -114,7 +114,7 @@ export const issueNote = (note: string | string[]): void => {
         }
         // ...list remaining notes as children
         if (n > note[0]) {
-          if (util.isStringJSON(n)) {
+          if (util.isStringJson(n)) {
             // ...check if note is JSON and present as table
             // table(JSON.parse(n))
             log(JSON.stringify(JSON.parse(n), null, 2))
@@ -130,7 +130,7 @@ export const issueNote = (note: string | string[]): void => {
       if (Array.isArray(n)) {
         // if array of lines from a single note
         for (const l of n) {
-          if (util.isStringJSON(l)) {
+          if (util.isStringJson(l)) {
             // ...check if line is JSON and present as table
             // table(JSON.parse(l))
             log(JSON.stringify(JSON.parse(l), null, 2))
