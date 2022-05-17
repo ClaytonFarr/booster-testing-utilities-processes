@@ -6,8 +6,7 @@ export default defineConfig({
     watchIgnore: [...configDefaults.watchIgnore, '.booster/*'],
     coverage: {
       all: true,
-      include: ['src/*'],
-      exclude: ['src/index.ts', 'src/constants.ts', 'src/roles.ts', 'src/config', 'src/common/types'],
+      include: ['test/*'],
     },
     globalSetup: ['test/globalSetup.ts'], // will run before/after *all* tests
     // setupFiles: ['test/setup.ts'], // will run before *each* test file
