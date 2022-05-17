@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import type { Process } from '../types'
-import * as vp from '../validate-process'
 import { describe, it, expect } from 'vitest'
+import * as vp from '../validate-process'
 
 // Tests Input
 // =============================================================================
