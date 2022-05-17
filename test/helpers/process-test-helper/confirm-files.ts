@@ -13,7 +13,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
 
   // Confirm assertions data present
   // -----------------------------------------------------------------------------------------------
-  const expectedAssertionGroups = ['roles', 'allInputs', 'allEntities']
+  const expectedAssertionGroups = ['trigger', 'scenarios', 'roles', 'allScenarioInputs', 'allEntities']
   if (
     Object.keys(assertions).length === 0 ||
     !expectedAssertionGroups.every((key) => Object.keys(assertions).includes(key))
@@ -98,7 +98,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
   }
 
   // ✨ Confirm that trigger INPUTS and INPUT TYPES match scenarios
-  const scenarioInputs = assertions.allInputs
+  const scenarioInputs = assertions.allScenarioInputs
   const triggerInputs = []
   if (triggerFile) {
     // gather trigger inputs
@@ -392,13 +392,13 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       const entityConstructorLines = entityFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
       const entityConstructorFieldNames = entityConstructorLines[0].match(/(?<=public |readonly )(\w*)/g)
       const entityFields = entity.fields.map((field) => field)
-      const entityFieldNames = entity.fields.map((field) => field.fieldName) as string[]
-      const missingFields = entityFieldNames.filter((fieldName) => !entityConstructorFieldNames.includes(fieldName))
+      const entityFieldNames = entity.fields.map((field) => field.name) as string[]
+      const missingFields = entityFieldNames.filter((name) => !entityConstructorFieldNames.includes(name))
       if (missingFields && missingFields.length > 0) {
         missingFields.forEach((missingField) => {
           const entityName = util.toPascalCase(entity.entityName)
           const fieldName = util.toCamelCase(missingField)
-          const fieldTypes = entityFields.find((field) => field.fieldName === missingField).fieldTypes.join(', ')
+          const fieldTypes = entityFields.find((field) => field.name === missingField).types.join(', ')
           issues.push(msg(is.entityFieldMissing, [entityName, fieldName, fieldTypes]))
         })
       }
@@ -409,11 +409,11 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
   for (const entity of scenarioEntities) {
     // infer field types from assertions
     const allAssertedEntityFields: AssertionValue[] = entity.fields.map((item) => {
-      return { fieldName: item.fieldName, fieldTypes: item.fieldTypes }
+      return { name: item.name, types: item.types }
     })
     // remove asserted fieldTypes that cannot be confirmed from files (asserted object/array presumed to = custom type)
     const relevantAssertedEntityFields = allAssertedEntityFields.filter(
-      (type) => !type.fieldTypes.includes('object') && !type.fieldTypes.includes('array')
+      (type) => !type.types.includes('object') && !type.types.includes('array')
     )
     // compare entity field types to types inferred from assertions
     const entityFileName = util.toKebabCase(entity.entityName)
@@ -432,9 +432,9 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
           .split(' | ')
           .sort()
         const entityFieldTypes = entityFieldTypesUntrimmed.map((type) => type.trim())
-        const matchingAssertedField = relevantAssertedEntityFields.find((item) => item.fieldName === entityFieldName)
+        const matchingAssertedField = relevantAssertedEntityFields.find((item) => item.name === entityFieldName)
         if (matchingAssertedField) {
-          const assertedFieldTypes = matchingAssertedField.fieldTypes
+          const assertedFieldTypes = matchingAssertedField.types
           const missingFieldTypes = assertedFieldTypes.filter((type) => !entityFieldTypes.includes(type))
           if (missingFieldTypes && missingFieldTypes.length > 0) {
             issues.push(
@@ -479,15 +479,13 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       const readModelConstructorLines = readModelFile.match(/(?<=public constructor\().*\n*(?=\) {})/gs)
       const readModelConstructorFieldNames = readModelConstructorLines[0].match(/(?<=public |readonly )(\w*)/g)
       const readModelFields = readModel.fields.map((value) => value)
-      const readModelFieldNames = readModel.fields.map((value) => value.fieldName) as string[]
-      const missingFields = readModelFieldNames.filter(
-        (fieldName) => !readModelConstructorFieldNames?.includes(fieldName)
-      )
+      const readModelFieldNames = readModel.fields.map((value) => value.name) as string[]
+      const missingFields = readModelFieldNames.filter((name) => !readModelConstructorFieldNames?.includes(name))
       if (missingFields && missingFields.length > 0) {
         missingFields.forEach((missingField) => {
           const readModelName = util.toPascalCase(readModel.readModelName)
           const fieldName = util.toCamelCase(missingField)
-          const fieldTypes = readModelFields.find((field) => field.fieldName === missingField).fieldTypes.join(', ')
+          const fieldTypes = readModelFields.find((field) => field.name === missingField).types.join(', ')
           issues.push(msg(is.readModelFieldMissing, [readModelName, fieldName, fieldTypes]))
         })
       }
@@ -498,11 +496,11 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
   for (const readModel of scenarioReadModels) {
     // infer field types from assertions
     const allAssertedReadModelFields = readModel.fields.map((item) => {
-      return { fieldName: item.fieldName, fieldTypes: item.fieldTypes }
+      return { name: item.name, types: item.types }
     })
     // remove asserted fieldTypes that cannot be confirmed from files (asserted object/array presumed to = custom type)
     const relevantAssertedReadModelFields = allAssertedReadModelFields.filter(
-      (type) => !type.fieldTypes.includes('object') && !type.fieldTypes.includes('array')
+      (type) => !type.types.includes('object') && !type.types.includes('array')
     )
     // compare read model constructor field types to types inferred from assertions
     const readModelFileName = util.toKebabCase(readModel.readModelName)
@@ -521,11 +519,9 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
           .split(' | ')
           .sort()
         const readModelFieldTypes = readModelFieldTypeUntrimmed.map((type) => type.trim())
-        const matchingAssertedField = relevantAssertedReadModelFields.find(
-          (item) => item.fieldName === readModelFieldName
-        )
+        const matchingAssertedField = relevantAssertedReadModelFields.find((item) => item.name === readModelFieldName)
         if (matchingAssertedField) {
-          const assertedFieldTypes = matchingAssertedField.fieldTypes
+          const assertedFieldTypes = matchingAssertedField.types
           const missingFieldTypes = assertedFieldTypes.filter((type) => !readModelFieldTypes.includes(type))
           if (missingFieldTypes && missingFieldTypes.length > 0) {
             issues.push(
