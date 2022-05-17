@@ -2,10 +2,27 @@ import * as types from './types'
 import * as util from './helpers-utils'
 
 export const gatherAssertions = (process: types.Process): types.Assertions => {
-  // ======================================================================================
+  return {
+    processName: gatherProcessName(process),
+    trigger: gatherTriggerInfo(process),
+    scenarios: gatherScenarioInfo(process),
+    roles: gatherRoles(process),
+    precedingActions: gatherPrecedingActions(process),
+    allScenarioInputs: gatherScenarioInputs(process),
+    allEntities: gatherEntities(process),
+    allReadModels: gatherReadModels(process),
+  }
+}
 
-  // ⏩ Pass-thru TRIGGER information
-  // ======================================================================================
+// ----------------------------------------------------------------------------
+// Discrete test functions (created to afford testing of process testing tools)
+
+/* eslint-disable prettier/prettier */
+/* eslint-disable @typescript-eslint/no-extra-parens */
+
+export const gatherProcessName = (process: types.Process): string => process.name
+
+export const gatherTriggerInfo = (process: types.Process): types.ActorCommand | types.ScheduledCommand => {
   let triggerInfo: types.ActorCommand | types.ScheduledCommand
   if (process.trigger.type === 'ActorCommand') {
     triggerInfo = {
@@ -16,13 +33,14 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
   } else if (process.trigger.type === 'ScheduledCommand') {
     triggerInfo = {
       type: 'ScheduledCommand',
-      commandName: process.trigger.commandName,
+      commandName: util.toPascalCase(process.trigger.commandName),
       schedule: process.trigger.schedule,
     }
   }
+  return triggerInfo
+}
 
-  // ⏩ Pass-thru SCENARIO information
-  // ======================================================================================
+export const gatherScenarioInfo = (process: types.Process): types.Scenario[] => {
   const scenarioInfo: types.Scenario[] = []
   for (const scenario of process.scenarios) {
     scenarioInfo.push({
@@ -34,12 +52,14 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
       expectedVisibleUpdates: scenario.expectedVisibleUpdates,
     })
   }
+  return scenarioInfo
+}
 
-  // 🔑 Gather all ROLES
-  // ======================================================================================
+export const gatherRoles = (process: types.Process): types.GatheredRoles => {
   // ...gather write roles if an actor command (trigger will have either 'all' OR one or more roles)
   let triggerWriteRoles: string[] = []
   if (process.trigger.type === 'ActorCommand') triggerWriteRoles = util.gatherRoles(process.trigger.authorized)
+
   // ...gather any write roles across scenario preceding actions
   let paWriteRoles: string[] = []
   for (const scenario of process.scenarios) {
@@ -51,6 +71,7 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
     }
   }
   paWriteRoles = [...new Set(paWriteRoles)] // remove duplicates
+
   // ...gather read roles across scenarios (can be 'all' AND/OR one or more roles across multiple read models)
   let readRoles: string[] = []
   for (const scenario of process.scenarios) {
@@ -63,26 +84,63 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
   }
   readRoles = [...new Set(readRoles)] // remove duplicates
   const allRoles: string[] = [...new Set([...triggerWriteRoles, ...paWriteRoles, ...readRoles])]
-  const roles = {
+
+  return {
     triggerWrite: triggerWriteRoles.sort(),
     paWrite: paWriteRoles.sort(),
     read: readRoles.sort(),
     all: allRoles.sort(),
   }
+}
 
-  // ✨ Gather scenario INPUTS for trigger command
-  // ======================================================================================
+export const gatherPrecedingActions = (process: types.Process): types.AssertionPrecedingActionSet[] => {
+  const precedingActions: types.AssertionPrecedingActionSet[] = []
+  for (const scenario of process.scenarios) {
+    if (scenario.precedingActions) {
+      const scenarioPrecedingActions: types.AssertionPrecedingAction[] = []
+      for (const action of scenario.precedingActions) {
+        const precedingAction: types.AssertionPrecedingAction = {
+          commandName: util.toPascalCase(action.commandName),
+          inputs: [],
+          authorized: action.authorized,
+        }
+        const paInputs = []
+        for (const [key, value] of Object.entries(action.inputs)) {
+          // ! validate this update is working as expected
+          paInputs.push(util.convertKeyValueToNameAndType(key, value))
+          // paInputs.push({
+          //   name: util.toCamelCase(key),
+          //   types: [util.inferValueType(value as string)],
+          // })
+        }
+        precedingAction.inputs = paInputs
+        scenarioPrecedingActions.push(precedingAction)
+      }
+      precedingActions.push({
+        scenarioName: scenario.name,
+        actions: scenarioPrecedingActions,
+      })
+    }
+  }
+  return precedingActions
+}
+
+export const gatherScenarioInputs = (process: types.Process): types.AssertionInput[] => {
   const inputsKeys = []
   const allScenarioInputsData = []
   for (const scenario of process.scenarios) {
     inputsKeys.push(Object.keys(scenario.inputs))
     for (const [key, value] of Object.entries(scenario.inputs)) {
+      // ! validate this update is working as expected
+      // ! FIX - this doesn't seem to be working here yet
+      // allScenarioInputsData.push(util.convertKeyValueToNameAndType(key, value))
       allScenarioInputsData.push({
         name: util.toCamelCase(key),
         types: util.inferValueType(value as string),
       })
     }
   }
+
   // merge all inputs from scenarios into one array
   const allScenarioInputs: types.AssertionInput[] = []
   for (const scenarioInput of allScenarioInputsData) {
@@ -98,43 +156,17 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
       })
     }
   }
+
   // mark inputs that occurred in all scenarios as required
   const inputsKeysCommon = inputsKeys.reduce((acc, curr) => acc.filter((x) => curr.includes(x)), inputsKeys[0])
   for (const input of allScenarioInputs) {
     if (inputsKeysCommon.includes(input.name)) input.required = true
   }
 
-  // ⏪ Gather PRECEDING ACTIONS
-  // ======================================================================================
-  const precedingActions: types.AssertionPrecedingActionSet[] = []
-  for (const scenario of process.scenarios) {
-    if (scenario.precedingActions) {
-      const scenarioPrecedingActions: types.AssertionPrecedingAction[] = []
-      for (const action of scenario.precedingActions) {
-        const precedingAction: types.AssertionPrecedingAction = {
-          commandName: util.toPascalCase(action.commandName),
-          inputs: [],
-          authorized: action.authorized,
-        }
-        const paInputs = []
-        for (const [key, value] of Object.entries(action.inputs)) {
-          paInputs.push({
-            name: util.toCamelCase(key),
-            types: [util.inferValueType(value as string)],
-          })
-        }
-        precedingAction.inputs = paInputs
-        scenarioPrecedingActions.push(precedingAction)
-      }
-      precedingActions.push({
-        scenarioName: scenario.name,
-        actions: scenarioPrecedingActions,
-      })
-    }
-  }
+  return allScenarioInputs
+}
 
-  // 👽 Gather ENTITIES data across all scenarios
-  // ======================================================================================
+export const gatherEntities = (process: types.Process): types.AssertionEntity[] => {
   const allScenarioEntitiesData: types.AssertionEntity[] = []
   for (const scenario of process.scenarios) {
     for (const stateUpdate of scenario.expectedStateUpdates) {
@@ -142,9 +174,11 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
         // ...gather entity values
         const fields: types.AssertionValue[] = []
         for (const [key, value] of Object.entries(stateUpdate.values)) {
+          // ! validate this update is working as expected
+          // fields.push(util.convertKeyValueToNameAndType(key, value))
           fields.push({
-            fieldName: util.toCamelCase(key),
-            fieldTypes: [util.inferValueType(value as string)],
+            name: util.toCamelCase(key),
+            types: [util.inferValueType(value as string)],
           })
         }
         // ...enter entity and values
@@ -155,6 +189,7 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
       }
     }
   }
+
   // ...merge data for each entity across scenarios
   const allScenarioEntitiesMerged: types.AssertionEntity[] = []
   for (const entity of allScenarioEntitiesData) {
@@ -166,24 +201,25 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
       const matchedIndex = allScenarioEntitiesMerged.findIndex((e) => e.entityName === entity.entityName)
       const existingEntity = allScenarioEntitiesMerged[matchedIndex]
       for (const field of entity.fields) {
-        const existingField = existingEntity.fields.find((f) => f.fieldName === field.fieldName)
+        const existingField = existingEntity.fields.find((f) => f.name === field.name)
         if (existingField) {
           // merge any new field types
-          const existingTypes = existingField.fieldTypes
-          const newTypes = field.fieldTypes
+          const existingTypes = existingField.types
+          const newTypes = field.types
           const mergedTypes = [...new Set([...existingTypes, ...newTypes])]
-          existingField.fieldTypes = mergedTypes
+          existingField.types = mergedTypes
         } else {
           existingEntity.fields.push(field)
         }
       }
     }
   }
-  // ...reduce duplicate fieldName in values within each entity
+
+  // ...reduce duplicate field name in values within each entity
   const allScenarioEntities: types.AssertionEntity[] = []
   for (const entity of allScenarioEntitiesMerged) {
     const fields = entity.fields.reduce((acc, value) => {
-      if (!acc.some((item) => item.fieldName === value.fieldName)) acc.push(value)
+      if (!acc.some((item) => item.name === value.name)) acc.push(value)
       return acc
     }, [])
     allScenarioEntities.push({
@@ -192,8 +228,10 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
     })
   }
 
-  // 🔭 Gather READ MODELS data across all scenarios
-  // ======================================================================================
+  return allScenarioEntities
+}
+
+export const gatherReadModels = (process: types.Process): types.AssertionReadModel[] => {
   const allScenarioReadModelsData: types.AssertionReadModel[] = []
   for (const scenario of process.scenarios) {
     if (scenario.expectedVisibleUpdates) {
@@ -202,9 +240,11 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
           // ...gather read model values
           const fields: types.AssertionValue[] = []
           for (const [key, value] of Object.entries(visibleUpdate.values)) {
+            // ! validate this update is working as expected
+            // fields.push(util.convertKeyValueToNameAndType(key, value))
             fields.push({
-              fieldName: util.toCamelCase(key),
-              fieldTypes: [util.inferValueType(value as string)],
+              name: util.toCamelCase(key),
+              types: [util.inferValueType(value as string)],
             })
           }
           // ...gather read model authorization
@@ -221,6 +261,7 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
       }
     }
   }
+
   // ...merge data for each read model across scenarios
   const allScenarioReadModelsMerged: types.AssertionReadModel[] = []
   for (const readModel of allScenarioReadModelsData) {
@@ -233,13 +274,13 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
       const existingReadModel = allScenarioReadModelsMerged[matchedIndex]
       // ...merge any new field types
       for (const field of readModel.fields) {
-        const existingField = existingReadModel.fields.find((f) => f.fieldName === field.fieldName)
+        const existingField = existingReadModel.fields.find((f) => f.name === field.name)
         if (existingField) {
           // merge any new field types
-          const existingTypes = existingField.fieldTypes
-          const newTypes = field.fieldTypes
+          const existingTypes = existingField.types
+          const newTypes = field.types
           const mergedTypes = [...new Set([...existingTypes, ...newTypes])]
-          existingField.fieldTypes = mergedTypes
+          existingField.types = mergedTypes
         } else {
           existingReadModel.fields.push(field)
         }
@@ -251,11 +292,12 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
       existingReadModel.authorized = mergedAuthorized
     }
   }
-  // ...reduce duplicate fieldName in values within each read model
+
+  // ...reduce duplicate field name in values within each read model
   const allScenarioReadModels: types.AssertionReadModel[] = []
   for (const readModel of allScenarioReadModelsMerged) {
     const fields = readModel.fields.reduce((acc, value) => {
-      if (!acc.some((item) => item.fieldName === value.fieldName)) acc.push(value)
+      if (!acc.some((item) => item.name === value.name)) acc.push(value)
       return acc
     }, [])
     allScenarioReadModels.push({
@@ -265,16 +307,5 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
     })
   }
 
-  // Return assertions data
-  // ======================================================================================
-  return {
-    processName: process.name,
-    trigger: triggerInfo,
-    scenarios: scenarioInfo,
-    roles,
-    precedingActions,
-    allInputs: allScenarioInputs,
-    allEntities: allScenarioEntities,
-    allReadModels: allScenarioReadModels,
-  }
+  return allScenarioReadModels
 }
