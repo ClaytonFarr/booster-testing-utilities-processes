@@ -17,7 +17,7 @@ export const createAllVariables = (acceptedInputs: type.CommandInput[]): string 
       if (validExample && typeof validExample === 'string') return `"${name}": "${validExample}"`
       if (validExample && typeof validExample !== 'string') return `"${name}": ${validExample}`
       if (type === 'String') return `"${name}": "${faker.random.word()}"`
-      if (type === 'Int') return `"${name}": ${faker.datatype.number()}`
+      if (type === 'Float') return `"${name}": ${faker.datatype.number()}`
       if (type === 'Boolean') return `"${name}": ${faker.datatype.boolean()}`
       if (type === 'ID') return `"${name}": "${faker.datatype.uuid()}"`
     })
