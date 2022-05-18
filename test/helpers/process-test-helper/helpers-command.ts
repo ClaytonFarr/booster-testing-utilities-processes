@@ -76,16 +76,18 @@ export const createMutationInputs = (acceptedInputs: type.CommandInput[]): strin
 }
 
 export const createMutationContent = (commandName: string, inputsVariables: string, inputs: string): string => {
+  const commandNameFormatted = util.toPascalCase(commandName)
   const mutationContent = `
-      mutation ${commandName}(${inputsVariables}) {
-        ${commandName}(input: { ${inputs} })
+      mutation ${commandNameFormatted}(${inputsVariables}) {
+        ${commandNameFormatted}(input: { ${inputs} })
       }`
   return mutationContent
 }
 
 export const createCommandMutation = (commandName: string, acceptedInputs: type.CommandInput[]): DocumentNode => {
+  const commandNameFormatted = util.toPascalCase(commandName)
   const inputsVariables = createMutationInputsVariables(acceptedInputs)
   const inputs = createMutationInputs(acceptedInputs)
-  const content = createMutationContent(commandName, inputsVariables, inputs)
+  const content = createMutationContent(commandNameFormatted, inputsVariables, inputs)
   return gql.gql(content)
 }

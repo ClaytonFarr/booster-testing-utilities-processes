@@ -2,7 +2,9 @@
 import { UUID } from '@boostercloud/framework-types'
 import { describe, it, expect } from 'vitest'
 import * as type from '../types'
+import * as util from '../helpers-utils'
 import * as com from '../helpers-command'
+import gql from 'graphql-tag'
 
 describe('Process - Command Helpers', async () => {
 
@@ -43,17 +45,31 @@ describe('Process - Command Helpers', async () => {
     it('- convert scenario inputs to command inputs', async () => expect(convertInputsTestResult).toEqual(convertInputsExpectedResult))
   })
 
-  // ! LEFT OFF HERE
-
   describe('Command Mutation', async () => {
+    const mutationTestCommand = 'Test Command Name'
+    const mutationTestCommandFormatted = util.toPascalCase(mutationTestCommand)
+    const mutationTestAcceptedInputs: type.CommandInput[] = [
+      { name: 'snack', type: 'String', validExample: 'apple', required: true },
+      { name: 'qty', type: 'Float', validExample: 1, required: true },
+      { name: 'drink', type: 'String', validExample: 'water', required: false },
+      { name: 'rush', type: 'Boolean', validExample: false, required: false }
+    ]
     //
-    it('- create mutation input variables', async () => expect(true).toEqual(true))
+    const createMutationInputsVariablesTestResult = com.createMutationInputsVariables(mutationTestAcceptedInputs)
+    const createMutationInputsVariablesExpectedResult = '$snack: String!, $qty: Float!, $drink: String, $rush: Boolean'
+    it('- create mutation input variables', async () => expect(createMutationInputsVariablesTestResult).toEqual(createMutationInputsVariablesExpectedResult))
     //
-    it('- create mutation inputs', async () => expect(true).toEqual(true))
+    const createMutationInputsTestResult = com.createMutationInputs(mutationTestAcceptedInputs)
+    const createMutationInputsExpectedResult = 'snack: $snack, qty: $qty, drink: $drink, rush: $rush'
+    it('- create mutation inputs', async () => expect(createMutationInputsTestResult).toEqual(createMutationInputsExpectedResult))
     //
-    it('- create mutation content', async () => expect(true).toEqual(true))
+    const createMutationContentTestResult = com.createMutationContent(mutationTestCommandFormatted, createMutationInputsVariablesTestResult, createMutationInputsTestResult)
+    const createMutationContentExpectedResult = `mutation ${mutationTestCommandFormatted}(${createMutationInputsVariablesTestResult}) { ${mutationTestCommandFormatted}(input: { ${createMutationInputsTestResult} })}`
+    it('- create mutation content', async () => expect(createMutationContentTestResult.replace(/ |\n/g, '')).toEqual(createMutationContentExpectedResult.replace(/ |\n/g, '')))
     //
-    it('- create mutation', async () => expect(true).toEqual(true))
+    const mutationTest04TestResult = com.createCommandMutation(mutationTestCommandFormatted, mutationTestAcceptedInputs)
+    const mutationTest04ExpectedResult = gql.gql(createMutationContentTestResult)
+    it('- create mutation', async () => expect(mutationTest04TestResult).toEqual(mutationTest04ExpectedResult))
   })
 //
 })
