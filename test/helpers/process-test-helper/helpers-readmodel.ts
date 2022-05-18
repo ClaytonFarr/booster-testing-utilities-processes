@@ -98,6 +98,31 @@ export const createQueryFilterString = (
   return filterString
 }
 
+export const createQueryVariables = (
+  filterBy?: Record<string, unknown>,
+  sortBy?: Record<string, unknown>,
+  limitTo?: number
+): Record<string, unknown> => {
+  return {
+    filterBy,
+    sortBy,
+    limitTo,
+  }
+}
+
+export const createReadModelQuery = (readModelName: string, fieldsToReturn?: string): DocumentNode => {
+  const fields = fieldsToReturn ? fieldsToReturn : '__typename'
+  return gql`
+      query List${readModelName}s($filterBy: List${readModelName}Filter, $sortBy: ${readModelName}SortBy, $limitTo: Int) {
+        List${readModelName}s(filter: $filterBy, sortBy: $sortBy, limit: $limitTo) {
+          items {
+            ${fields}
+          }
+        }
+      }
+    `
+}
+
 export const evaluateReadModelProjection = async (
   graphQLclient: ApolloClient<NormalizedCacheObject>,
   readModelName: string,
@@ -125,29 +150,4 @@ export const evaluateReadModelProjection = async (
   const { data } = await graphQLclient.query({ query: connectionQuery, variables: queryVariables })
   const items = data[`List${readModel}s`].items
   return items
-}
-
-const createQueryVariables = (
-  filterBy?: Record<string, unknown>,
-  sortBy?: Record<string, unknown>,
-  limitTo?: number
-): Record<string, unknown> => {
-  return {
-    filterBy,
-    sortBy,
-    limitTo,
-  }
-}
-
-const createReadModelQuery = (readModelName: string, fieldsToReturn?: string): DocumentNode => {
-  const fields = fieldsToReturn ? fieldsToReturn : '__typename'
-  return gql`
-      query List${readModelName}s($filterBy: List${readModelName}Filter, $sortBy: ${readModelName}SortBy, $limitTo: Int) {
-        List${readModelName}s(filter: $filterBy, sortBy: $sortBy, limit: $limitTo) {
-          items {
-            ${fields}
-          }
-        }
-      }
-    `
 }
