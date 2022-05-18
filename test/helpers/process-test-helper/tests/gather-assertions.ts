@@ -197,7 +197,7 @@ const testGatheredAssertions: type.Assertions = {
   processName: ga.gatherProcessName(testProcess),
   trigger: ga.gatherTriggerInfo(testProcess),
   scenarios: ga.gatherScenarioInfo(testProcess),
-  roles: ga.gatherRoles(testProcess),
+  roles: ga.gatherAssertedRoles(testProcess),
   precedingActions: ga.gatherPrecedingActions(testProcess),
   allScenarioInputs: ga.gatherScenarioInputs(testProcess),
   allEntities: ga.gatherEntities(testProcess),
@@ -243,15 +243,15 @@ describe('Gather Assertions', async () => {
   describe('Process roles', async () => {
     //
     const assertedTriggerInfo = testProcess.trigger as type.ActorCommand
-    const assertedTriggerRolesTransformed = auth.gatherRoles(assertedTriggerInfo.authorized)
+    const assertedTriggerRolesTransformed = auth.gatherAssertedRoles(assertedTriggerInfo.authorized)
     const gatheredTriggerRoles = testGatheredAssertions.roles.triggerWrite
     it('- trigger roles', async () => expect(gatheredTriggerRoles).toEqual(assertedTriggerRolesTransformed))
     //
-    const assertedPrecedingActionRolesTransformed = [ ...new Set(testProcess.scenarios.map((sc) => sc.precedingActions.map((pa) => auth.gatherRoles(pa.authorized)))) ]
+    const assertedPrecedingActionRolesTransformed = [ ...new Set(testProcess.scenarios.map((sc) => sc.precedingActions.map((pa) => auth.gatherAssertedRoles(pa.authorized)))) ]
     const gatheredPrecedingActionRoles = testGatheredAssertions.roles.paWrite
     it('- all preceding action roles, when present', async () => expect(gatheredPrecedingActionRoles).toEqual(assertedPrecedingActionRolesTransformed))
     //
-    const assertedReadRolesTransformed = [...new Set(testProcess.scenarios.map((sc) => sc.expectedVisibleUpdates.map((evu) => auth.gatherRoles(evu.authorized))))]
+    const assertedReadRolesTransformed = [...new Set(testProcess.scenarios.map((sc) => sc.expectedVisibleUpdates.map((evu) => auth.gatherAssertedRoles(evu.authorized))))]
     const gatheredReadRoles = testGatheredAssertions.roles.read
     it('- all visible update roles', async () => expect(gatheredReadRoles).toEqual(assertedReadRolesTransformed))
     //
