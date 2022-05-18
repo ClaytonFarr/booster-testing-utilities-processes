@@ -31,17 +31,18 @@ export const wasAuthorizedRequestAllowed = async (
 // Roles
 // -----------------------------------------------------------------------------------
 
-export const authIncludesAll = (auth: string | string[]): boolean => {
+export const arrayIncludesAll = (auth: string | string[]): boolean => {
   let check: boolean
   if (typeof auth === 'string') check = auth.toLowerCase() === 'all'
   if (typeof auth !== 'string') check = auth.join('|').toLowerCase().includes('all')
   return check
 }
 
-export const gatherRoles = (auth: string | string[]): string[] => {
-  let roles: string[]
-  if (authIncludesAll(auth)) roles = ['all']
-  if (typeof auth === 'string' && !authIncludesAll(auth)) roles.push(util.toPascalCase(auth))
-  if (typeof auth !== 'string' && !authIncludesAll(auth)) roles = auth.map((role) => util.toPascalCase(role))
+export const gatherAssertedRoles = (auth: string | string[]): string[] => {
+  let roles: string[] = []
+  if (auth.length === 0) return roles
+  if (arrayIncludesAll(auth)) roles = ['all']
+  if (typeof auth === 'string' && !arrayIncludesAll(auth)) roles.push(util.toPascalCase(auth))
+  if (typeof auth !== 'string' && !arrayIncludesAll(auth)) roles = auth.map((role) => util.toPascalCase(role))
   return roles
 }
