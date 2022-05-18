@@ -415,7 +415,7 @@ export const confirmAssertions = async (
             // query readModel for expected values
             let shouldHaveItems: Record<string, unknown>[] = []
             if (visibleUpdate.values) {
-              shouldHaveItems = await readModel.evaluateReadModelProjection(
+              shouldHaveItems = await readModel.queryReadModel(
                 readGraphQLclient,
                 visibleUpdate.readModelName,
                 visibleUpdate.values
@@ -425,7 +425,7 @@ export const confirmAssertions = async (
             let shouldNotHaveItems: Record<string, unknown>[] = []
             if (visibleUpdate.notValues) {
               try {
-                shouldNotHaveItems = await readModel.evaluateReadModelProjection(
+                shouldNotHaveItems = await readModel.queryReadModel(
                   readGraphQLclient,
                   visibleUpdate.readModelName,
                   visibleUpdate.notValues
