@@ -56,14 +56,7 @@ export const convertScenarioInputsToCommandInputs = (
 // Command Mutation
 // -----------------------------------------------------------------------------------
 
-export const createCommandMutation = (commandName: string, acceptedInputs: type.CommandInput[]): DocumentNode => {
-  const inputsVariables = createMutationInputsVariables(acceptedInputs)
-  const inputs = createMutationInputs(acceptedInputs)
-  const content = createMutationContent(commandName, inputsVariables, inputs)
-  return gql.gql(content)
-}
-
-const createMutationInputsVariables = (acceptedInputs: type.CommandInput[]): string => {
+export const createMutationInputsVariables = (acceptedInputs: type.CommandInput[]): string => {
   const inputsVariables = acceptedInputs
     .map(({ name, type, required }) => {
       if (required) return `$${name}: ${type}!`
@@ -73,7 +66,7 @@ const createMutationInputsVariables = (acceptedInputs: type.CommandInput[]): str
   return inputsVariables
 }
 
-const createMutationInputs = (acceptedInputs: type.CommandInput[]): string => {
+export const createMutationInputs = (acceptedInputs: type.CommandInput[]): string => {
   const inputs: string[] | string = acceptedInputs
     .map(({ name }) => {
       return `${name}: $${name}`
@@ -82,10 +75,17 @@ const createMutationInputs = (acceptedInputs: type.CommandInput[]): string => {
   return inputs
 }
 
-const createMutationContent = (commandName: string, inputsVariables: string, inputs: string): string => {
+export const createMutationContent = (commandName: string, inputsVariables: string, inputs: string): string => {
   const mutationContent = `
       mutation ${commandName}(${inputsVariables}) {
         ${commandName}(input: { ${inputs} })
       }`
   return mutationContent
+}
+
+export const createCommandMutation = (commandName: string, acceptedInputs: type.CommandInput[]): DocumentNode => {
+  const inputsVariables = createMutationInputsVariables(acceptedInputs)
+  const inputs = createMutationInputs(acceptedInputs)
+  const content = createMutationContent(commandName, inputsVariables, inputs)
+  return gql.gql(content)
 }
