@@ -44,5 +44,5 @@ export const gatherAssertedRoles = (auth: string | string[]): string[] => {
   if (arrayIncludesAll(auth)) roles = ['all']
   if (typeof auth === 'string' && !arrayIncludesAll(auth)) roles.push(util.toPascalCase(auth))
   if (typeof auth !== 'string' && !arrayIncludesAll(auth)) roles = auth.map((role) => util.toPascalCase(role))
-  return roles
+  return roles.sort()
 }
