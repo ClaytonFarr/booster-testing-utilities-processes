@@ -123,7 +123,7 @@ export const createReadModelQuery = (readModelName: string, fieldsToReturn?: str
     `
 }
 
-export const evaluateReadModelProjection = async (
+export const queryReadModel = async (
   graphQLclient: ApolloClient<NormalizedCacheObject>,
   readModelName: string,
   fields: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>,
