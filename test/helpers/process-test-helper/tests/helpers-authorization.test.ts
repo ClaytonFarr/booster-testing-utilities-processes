@@ -31,7 +31,7 @@ describe('Process - Authorization Helpers', async () => {
     const allCheck03 = auth.arrayIncludesAll(assertedAuthorization03)
     const allCheck04 = auth.arrayIncludesAll(assertedAuthorization04)
     const allCheck05 = auth.arrayIncludesAll(assertedAuthorization05)
-    it("'- check if authorization array includes 'all'", async () => {
+    it("- check if authorization array includes 'all'", async () => {
       expect(allCheck01).toEqual(false)
       expect(allCheck02).toEqual(true)
       expect(allCheck03).toEqual(false)
@@ -48,8 +48,8 @@ describe('Process - Authorization Helpers', async () => {
     const rolesCheck04 = auth.gatherAssertedRoles(assertedAuthorization04)
     const expectedRoles04 = ['all']
     const rolesCheck05 = auth.gatherAssertedRoles(assertedAuthorization05)
-    const expectedRoles05 = ['User', 'Admin', 'ThirdPartyService']
-    it("'- gather asserted roles", async () => {
+    const expectedRoles05 = ['Admin', 'ThirdPartyService', 'User']
+    it('- gather asserted roles', async () => {
       expect(rolesCheck01).toEqual(expectedRoles01)
       expect(rolesCheck02).toEqual(expectedRoles02)
       expect(rolesCheck03).toEqual(expectedRoles03)
