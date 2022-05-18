@@ -1,4 +1,5 @@
 /* eslint-disable prettier/prettier */
+import { UUID } from '@boostercloud/framework-types'
 import { describe, it, expect } from 'vitest'
 import * as util from '../helpers-utils'
 
@@ -7,33 +8,33 @@ describe('Process - Miscellaneous Helpers', async () => {
   describe('Strings', async () => {
     const testStrings = [
       'test', 'test word string', 'test-word-string', 'test_word_string', 'test-word_string',
-      'TEST WORD STRING', 'TEST-WORD-STRING', 'TEST_WORD_STRING', 'TEST-WORD_STRING',
+      'TEST', 'TEST WORD STRING', 'TEST-WORD-STRING', 'TEST_WORD_STRING', 'TEST-WORD_STRING',
       'Test', 'Test Word String', 'Test-Word-String', 'Test_Word_String', 'Test-Word_String',
-      'Test word string', 'test-Word-string', 'test word_String', 'Test Word_String',
+      'Test', 'Test word string', 'test-Word-string', 'test word_String', 'Test Word_String',
     ]
     const kebabCase = [
       'test', 'test-word-string', 'test-word-string', 'test-word-string', 'test-word-string',
-      'test-word-string', 'test-word-string', 'test-word-string', 'test-word-string',
       'test', 'test-word-string', 'test-word-string', 'test-word-string', 'test-word-string',
-      'test-word-string', 'test-word-string', 'test-word-string', 'test-word-string',
+      'test', 'test-word-string', 'test-word-string', 'test-word-string', 'test-word-string',
+      'test', 'test-word-string', 'test-word-string', 'test-word-string', 'test-word-string',
     ]
     const camelCase = [
       'test', 'testWordString', 'testWordString', 'testWordString', 'testWordString',
-      'testWordString', 'testWordString', 'testWordString', 'testWordString',
       'test', 'testWordString', 'testWordString', 'testWordString', 'testWordString',
-      'testWordString', 'testWordString', 'testWordString', 'testWordString',
+      'test', 'testWordString', 'testWordString', 'testWordString', 'testWordString',
+      'test', 'testWordString', 'testWordString', 'testWordString', 'testWordString',
     ]
     const PascalCase = [
       'Test', 'TestWordString', 'TestWordString', 'TestWordString', 'TestWordString',
-      'TestWordString', 'TestWordString', 'TestWordString', 'TestWordString',
       'Test', 'TestWordString', 'TestWordString', 'TestWordString', 'TestWordString',
-      'TestWordString', 'TestWordString', 'TestWordString', 'TestWordString',
+      'Test', 'TestWordString', 'TestWordString', 'TestWordString', 'TestWordString',
+      'Test', 'TestWordString', 'TestWordString', 'TestWordString', 'TestWordString',
     ]
     const titleCase = [
       'Test', 'Test Word String', 'Test Word String', 'Test Word String', 'Test Word String',
-      'Test Word String', 'Test Word String', 'Test Word String', 'Test Word String',
       'Test', 'Test Word String', 'Test Word String', 'Test Word String', 'Test Word String',
-      'Test Word String', 'Test Word String', 'Test Word String', 'Test Word String',
+      'Test', 'Test Word String', 'Test Word String', 'Test Word String', 'Test Word String',
+      'Test', 'Test Word String', 'Test Word String', 'Test Word String', 'Test Word String',
     ]
     const convertTestStringsToKebabCase = testStrings.map(util.toKebabCase)
     const convertTestStringsToCamelCase = testStrings.map(util.toCamelCase)
@@ -80,22 +81,23 @@ describe('Process - Miscellaneous Helpers', async () => {
   //
   describe('Infer Value Types', async () => {
     //
-    const testInput01a = [ undefined, 'clayton', 3, true, {}, []]
+    const testUUID = UUID.generate()
+    const testInput01a = [ undefined, 'clayton', 3, true, testUUID, {}, []]
     const testInput01b = [ 'string', 'number', 'boolean', 'UUID', 'object', 'array']
     const testResults01a = testInput01a.map(util.inferValueType)
     const testResults01b = testInput01b.map(util.inferValueType)
-    const expectedResults01a = [ 'undefined', 'string', 'number', 'boolean', 'object', 'array']
+    const expectedResults01a = [ 'undefined', 'string', 'number', 'boolean', 'UUID', 'object', 'array']
     const expectedResults01b = [ 'string', 'number', 'boolean', 'UUID', 'object', 'array']
     it('- infer value type keyword', async () => {
       expect(testResults01a).toEqual(expectedResults01a)
       expect(testResults01b).toEqual(expectedResults01b)
     })
     //
-    const testInput02a = [ 'clayton', 3, true ]
+    const testInput02a = [ 'clayton', 3, true, testUUID ]
     const testInput02b = [ 'string', 'number', 'boolean', 'UUID']
     const testResults02a = testInput02a.map(util.inferGraphQLValueType)
     const testResults02b = testInput02b.map(util.inferGraphQLValueType)
-    const expectedResults02a = [ 'String', 'Float', 'Boolean' ]
+    const expectedResults02a = [ 'String', 'Float', 'Boolean', 'ID' ]
     const expectedResults02b = [ 'String', 'Float', 'Boolean', 'ID' ]
     it('- infer graphQL value type', async () => {
       expect(testResults02a).toEqual(expectedResults02a)

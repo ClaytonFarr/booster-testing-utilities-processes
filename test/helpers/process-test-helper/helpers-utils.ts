@@ -20,6 +20,8 @@ export const toKebabCase = (str: string): string =>
 export const toCamelCase = (str: string): string => {
   // if cameCase already pass it back
   if (/^[a-z][a-zA-Z0-9]*$/.test(str)) return str
+  // if string is a single word that is also in ALLCAPS, return it in lowercase
+  if (/^[A-Z][A-Z0-9]*$/.test(str)) return str.toLowerCase()
   // if PascalCase simply change case of first character
   if (/^[A-Z][a-zA-Z0-9]*$/.test(str)) return str.charAt(0).toLowerCase() + str.slice(1)
   // else, grind it out
@@ -32,6 +34,11 @@ export const toCamelCase = (str: string): string => {
 }
 
 export const toPascalCase = (str: string): string => {
+  // if string is a single word that is also in ALLCAPS, lowercase and capitalize first letter
+  if (/^[A-Z][A-Z0-9]*$/.test(str)) {
+    const wasAllCaps = str.toLowerCase()
+    return wasAllCaps.charAt(0).toUpperCase() + wasAllCaps.slice(1)
+  }
   // if PascalCase already pass it back
   if (/^[A-Z][a-zA-Z0-9]*$/.test(str)) return str
   // if camelCase simply change case of first character
@@ -45,14 +52,21 @@ export const toPascalCase = (str: string): string => {
     .replace(/[\s_-]+/g, '')
 }
 
-export const toTitleCase = (str: string): string =>
-  str
+export const toTitleCase = (str: string): string => {
+  // if string is a single word, lowercase and capitalize first letter
+  if (/^[a-zA-Z0-9]*$/.test(str)) {
+    const wasAllCaps = str.toLowerCase()
+    return wasAllCaps.charAt(0).toUpperCase() + wasAllCaps.slice(1)
+  }
+  // else grind it out
+  return str
     .replace(/([a-z])([A-Z])/g, '$1-$2')
     .replace(/[\s_-]+/g, ' ')
     .toLowerCase()
     .replace(/(?:^\w|[A-Z]|\b\w|_\w)/g, (leftTrim, index) =>
       index === 0 ? leftTrim.toUpperCase() : leftTrim.toUpperCase()
     )
+}
 
 // Arrays
 // -----------------------------------------------------------------------------------
@@ -98,6 +112,7 @@ export const inferValueType = (
   val: string | number | boolean | Record<string, unknown> | unknown[] | UUID | unknown
 ): string => {
   let type: string
+  if (typeof val === 'string' && uuidRegex.test(val)) return 'UUID'
   switch (val) {
     case 'string':
       type = 'string'
@@ -131,6 +146,7 @@ export const inferValueType = (
 export const inferGraphQLValueType = (val: string | number | boolean | UUID): string => {
   let type: string
   // if value is a string check for type keyword and convert to GraphQL equivalent
+  if (typeof val === 'string' && uuidRegex.test(val)) return 'ID'
   if (typeof val === 'string')
     switch (val) {
       case 'string':
