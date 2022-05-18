@@ -150,7 +150,7 @@ export const confirmAssertions = async (
               )
 
               // ...select appropriate role + client
-              const paCommandRoles = auth.gatherRoles(action.authorized)
+              const paCommandRoles = auth.gatherAssertedRoles(action.authorized)
               const paCommandGraphQLclient = paCommandRoles?.includes('all')
                 ? unAuthGraphQLclient
                 : authGraphQLclient(paCommandRoles[0])
