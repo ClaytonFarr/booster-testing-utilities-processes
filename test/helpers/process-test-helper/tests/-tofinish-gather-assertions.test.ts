@@ -10,6 +10,9 @@ import * as ga from '../gather-assertions'
 // Tests Input
 // =============================================================================
 
+// Test input utilities
+// -----------------------------------------------------------------------------
+
 const generateSimpleValueFromType = (type: string): string | number | boolean | UUID => {
   switch (type) {
     case 'string':
@@ -60,6 +63,10 @@ const generateAnyValueFromType = (
 const createInputValues = (types: string[]): (string | number | boolean | UUID)[] => types.map(generateSimpleValueFromType)
 const createDataValues = (types: string[]): (string | number | boolean | UUID | Record<string, unknown> | unknown[])[] => types.map(generateAnyValueFromType)
 
+// Test input data
+// (Process definition and variables used within it)
+// -----------------------------------------------------------------------------
+
 const processEntities = ['Entity One', 'Entity Two', 'Entity Three']
 const processReadModels = ['Read Model One', 'Read Model Two', 'Entity Three']
 
@@ -77,7 +84,7 @@ const fieldBValues = createDataValues(fieldBTypes)
 const fieldCTypes = ['string', 'number', 'boolean', 'uuid']
 const fieldCValues = createDataValues(fieldCTypes)
 
-const testProcess: type.Process = {
+const assertionsInput: type.Process = {
   name: 'Process Name',
 
   trigger: {
@@ -193,15 +200,18 @@ const testProcess: type.Process = {
   ],
 }
 
-const testGatheredAssertions: type.Assertions = {
-  processName: ga.gatherProcessName(testProcess),
-  trigger: ga.gatherTriggerInfo(testProcess),
-  scenarios: ga.gatherScenarioInfo(testProcess),
-  roles: ga.gatherAssertedRoles(testProcess),
-  precedingActions: ga.gatherPrecedingActions(testProcess),
-  allScenarioInputs: ga.gatherScenarioInputs(testProcess),
-  allEntities: ga.gatherEntities(testProcess),
-  allReadModels: ga.gatherReadModels(testProcess),
+// Test result data
+// (tested methods called here, populating single object with results)
+// -----------------------------------------------------------------------------
+const assertionsOutput: type.Assertions = {
+  processName: ga.gatherProcessName(assertionsInput),
+  trigger: ga.gatherTriggerInfo(assertionsInput),
+  scenarios: ga.gatherScenarioInfo(assertionsInput),
+  roles: ga.gatherAllRoles(assertionsInput),
+  precedingActions: ga.gatherPrecedingActions(assertionsInput),
+  allScenarioInputs: ga.gatherScenarioInputs(assertionsInput),
+  allEntities: ga.gatherEntities(assertionsInput),
+  allReadModels: ga.gatherReadModels(assertionsInput),
 }
 
 // Tests
@@ -209,24 +219,24 @@ const testGatheredAssertions: type.Assertions = {
 
 describe('Gather Assertions', async () => {
   //
-  it('Process name', async () => expect(testGatheredAssertions.processName).toEqual(testProcess.name))
+  it('Process name', async () => expect(assertionsOutput.processName).toEqual(assertionsInput.name))
 
   describe('Process trigger', async () => {
     //
-    const assertedTriggerInfo = testProcess.trigger as type.ActorCommand
-    const gatheredTriggerInfo = testGatheredAssertions.trigger as type.ActorCommand
-    it('- trigger command name (as PascalCase)', async () => expect(gatheredTriggerInfo.commandName).toEqual(util.toPascalCase(assertedTriggerInfo.commandName)))
-    it('- trigger authorization, when present', async () => expect(gatheredTriggerInfo.authorized).toEqual(assertedTriggerInfo.authorized))
+    const assertedTrigger = assertionsInput.trigger as type.ActorCommand
+    const gatheredTrigger = assertionsOutput.trigger as type.ActorCommand
+    it('- trigger command name (as PascalCase)', async () => expect(gatheredTrigger.commandName).toEqual(util.toPascalCase(assertedTrigger.commandName)))
+    it('- trigger authorization, when present', async () => expect(gatheredTrigger.authorized).toEqual(assertedTrigger.authorized))
     // LATER: add tests for scheduled commands when functionality added to testing tools
   })
 
   //
   describe('Process scenarios', async () => {
-    for (const gatheredScenario of testGatheredAssertions.scenarios) {
+    for (const gatheredScenario of assertionsOutput.scenarios) {
       describe('Each scenario', async () => {
         //
-        const gatheredScenarioIndex = testGatheredAssertions.scenarios.indexOf(gatheredScenario)
-        const assertedScenario = testProcess.scenarios[gatheredScenarioIndex]
+        const gatheredScenarioIndex = assertionsOutput.scenarios.indexOf(gatheredScenario)
+        const assertedScenario = assertionsInput.scenarios[gatheredScenarioIndex]
         it('- scenario name', async () => expect(gatheredScenario.name).toEqual(assertedScenario.name))
         it('- scenario inputs', async () => expect(gatheredScenario.inputs).toEqual(assertedScenario.inputs))
         it('- scenario preceding actions, when present', async () => expect(gatheredScenario.precedingActions).toEqual(assertedScenario.precedingActions))
@@ -236,36 +246,42 @@ describe('Gather Assertions', async () => {
     }
   })
 
-  // ! LEFT OFF HERE 
-  // ! looks like 'roles' tests are not passing yet due to arrays being different shapes
-
   //
   describe('Process roles', async () => {
     //
-    const assertedTriggerInfo = testProcess.trigger as type.ActorCommand
-    const assertedTriggerRolesTransformed = auth.gatherAssertedRoles(assertedTriggerInfo.authorized)
-    const gatheredTriggerRoles = testGatheredAssertions.roles.triggerWrite
+    const assertedTrigger = assertionsInput.trigger as type.ActorCommand
+    const assertedTriggerRolesTransformed = auth.gatherAssertedRoles(assertedTrigger.authorized)
+    const gatheredTriggerRoles = assertionsOutput.roles.triggerWrite
     it('- trigger roles', async () => expect(gatheredTriggerRoles).toEqual(assertedTriggerRolesTransformed))
     //
-    const assertedPrecedingActionRolesTransformed = [ ...new Set(testProcess.scenarios.map((sc) => sc.precedingActions.map((pa) => auth.gatherAssertedRoles(pa.authorized)))) ]
-    const gatheredPrecedingActionRoles = testGatheredAssertions.roles.paWrite
-    it('- all preceding action roles, when present', async () => expect(gatheredPrecedingActionRoles).toEqual(assertedPrecedingActionRolesTransformed))
+    const assertedPaRolesTransformed = assertionsInput.scenarios.map((sc) => sc.precedingActions.map((pa) => auth.gatherAssertedRoles(pa.authorized)))
+    const assertedPaRolesFlattened = assertedPaRolesTransformed.flat(10)
+    const assertedPaRolesDeDuped = [ ...new Set(assertedPaRolesFlattened) ]
+    const assertedPaRolesSorted = assertedPaRolesDeDuped.sort()
+    const gatheredPaRoles = assertionsOutput.roles.paWrite
+    it('- all preceding action roles, when present', async () => expect(gatheredPaRoles).toEqual(assertedPaRolesSorted))
     //
-    const assertedReadRolesTransformed = [...new Set(testProcess.scenarios.map((sc) => sc.expectedVisibleUpdates.map((evu) => auth.gatherAssertedRoles(evu.authorized))))]
-    const gatheredReadRoles = testGatheredAssertions.roles.read
-    it('- all visible update roles', async () => expect(gatheredReadRoles).toEqual(assertedReadRolesTransformed))
+    const assertedReadRolesTransformed = [ ...new Set(assertionsInput.scenarios.map((sc) => sc.expectedVisibleUpdates.map((evu) => auth.gatherAssertedRoles(evu.authorized)))) ]
+    const assertedReadRolesFlattened = assertedReadRolesTransformed.flat(10)
+    const assertedReadRolesDeDuped = [ ...new Set(assertedReadRolesFlattened) ]
+    const assertedReadRolesSorted = assertedReadRolesDeDuped.sort()
+    const gatheredReadRoles = assertionsOutput.roles.read
+    it('- all visible update roles', async () => expect(gatheredReadRoles).toEqual(assertedReadRolesSorted))
     //
-    const assertedAllRolesTransformed = [ ...new Set([...assertedTriggerRolesTransformed, ...assertedPrecedingActionRolesTransformed, ...assertedReadRolesTransformed]) ]
-    const gatheredAllRoles = testGatheredAssertions.roles.all
-    it('- merged list of all roles', async () => expect(gatheredAllRoles).toEqual(assertedAllRolesTransformed))
+    const assertedAllRolesTransformed = [ ...new Set([...assertedTriggerRolesTransformed, ...assertedPaRolesTransformed, ...assertedReadRolesTransformed]) ]
+    const assertedAllRolesFlattened = assertedAllRolesTransformed.flat(10)
+    const assertedAllRolesDeDuped = [ ...new Set(assertedAllRolesFlattened) ]
+    const assertedAllRolesSorted = assertedAllRolesDeDuped.sort()
+    const gatheredAllRoles = assertionsOutput.roles.all
+    it('- merged list of all roles', async () => expect(gatheredAllRoles).toEqual(assertedAllRolesSorted))
   })
 
   //
   describe("Process scenarios' preceding actions", async () => {
-    for (const gatheredPaSet of testGatheredAssertions.precedingActions) {
+    for (const gatheredPaSet of assertionsOutput.precedingActions) {
       describe(`Preceding action set for '${gatheredPaSet.scenarioName}'`, async () => {
         //
-        const assertedScenario = testProcess.scenarios.find((sc) => sc.name === gatheredPaSet.scenarioName)
+        const assertedScenario = assertionsInput.scenarios.find((sc) => sc.name === gatheredPaSet.scenarioName)
         it('- corresponding scenario name', async () =>
           expect(gatheredPaSet.scenarioName).toEqual(assertedScenario.name))
         //
@@ -287,10 +303,12 @@ describe('Gather Assertions', async () => {
     }
   })
 
+  // ! LEFT OFF HERE 
+
   //
   describe("Process scenarios' inputs", async () => {
     //
-    // for (const assertedScenario of testProcess.scenarios) {
+    // for (const assertedScenario of assertionsInput.scenarios) {
     describe('Each scenario', async () => {
       //
       it('- all input names (as camelCase)', async () => expect(true).toEqual(true))
