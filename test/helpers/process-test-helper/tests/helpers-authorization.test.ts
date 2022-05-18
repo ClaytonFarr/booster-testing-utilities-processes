@@ -19,7 +19,7 @@ describe('Process - Authorization Helpers', async () => {
   describe('Authorization', async () => {
     //
     it('- check if authorized request was rejected', async () => {
-      // LATER: determine how to set up local test content & server to evaluate GraphQL queries
+      // LATER: determine how to set up local test content & server to test GraphQL query methods
       expect(true).toEqual(true)
     })
   })
