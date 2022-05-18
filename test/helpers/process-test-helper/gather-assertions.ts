@@ -7,7 +7,7 @@ export const gatherAssertions = (process: types.Process): types.Assertions => {
     processName: gatherProcessName(process),
     trigger: gatherTriggerInfo(process),
     scenarios: gatherScenarioInfo(process),
-    roles: gatherRoles(process),
+    roles: gatherAllRoles(process),
     precedingActions: gatherPrecedingActions(process),
     allScenarioInputs: gatherScenarioInputs(process),
     allEntities: gatherEntities(process),
@@ -56,17 +56,17 @@ export const gatherScenarioInfo = (process: types.Process): types.Scenario[] => 
   return scenarioInfo
 }
 
-export const gatherRoles = (process: types.Process): types.GatheredRoles => {
+export const gatherAllRoles = (process: types.Process): types.GatheredRoles => {
   // ...gather write roles if an actor command (trigger will have either 'all' OR one or more roles)
   let triggerWriteRoles: string[] = []
-  if (process.trigger.type === 'ActorCommand') triggerWriteRoles = auth.gatherRoles(process.trigger.authorized)
+  if (process.trigger.type === 'ActorCommand') triggerWriteRoles = auth.gatherAssertedRoles(process.trigger.authorized)
 
   // ...gather any write roles across scenario preceding actions
   let paWriteRoles: string[] = []
   for (const scenario of process.scenarios) {
     if (scenario.precedingActions) {
       for (const action of scenario.precedingActions) {
-        const paWriteRolesSet = auth.gatherRoles(action.authorized)
+        const paWriteRolesSet = auth.gatherAssertedRoles(action.authorized)
         paWriteRoles = paWriteRoles.concat(paWriteRolesSet)
       }
     }
@@ -78,7 +78,7 @@ export const gatherRoles = (process: types.Process): types.GatheredRoles => {
   for (const scenario of process.scenarios) {
     if (scenario.expectedVisibleUpdates) {
       for (const expectedVisibleUpdate of scenario.expectedVisibleUpdates) {
-        const readRolesSet = auth.gatherRoles(expectedVisibleUpdate.authorized)
+        const readRolesSet = auth.gatherAssertedRoles(expectedVisibleUpdate.authorized)
         readRoles = readRoles.concat(readRolesSet)
       }
     }
