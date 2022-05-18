@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import * as util from '../helpers-utils'
 
-describe('Process Helper Utilities', async () => {
+describe('Process - Miscellaneous Helpers', async () => {
   //
   describe('Strings', async () => {
     const testStrings = [
