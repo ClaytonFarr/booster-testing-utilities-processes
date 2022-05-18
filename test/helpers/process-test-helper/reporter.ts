@@ -78,12 +78,6 @@ export const issueGroupSubheader = (heading: string): void => {
     c.bold(c.white(`${heading}`)),
     c.white(c.dim(`${borderIcon.repeat(halfBorderWidth)}\n`))
   )
-  // log(
-  //   c.white(c.bold(`${heading}`)), //
-  //   c.dim(
-  //     c.white(`\n${borderIcon.repeat(logWidth)}\n`) //
-  //   )
-  // )
 }
 
 export const issueNote = (note: string | string[]): void => {
