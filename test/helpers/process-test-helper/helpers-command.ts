@@ -14,8 +14,8 @@ import gql from 'graphql-tag'
 export const createAllVariables = (acceptedInputs: type.CommandInput[]): string => {
   const variables = acceptedInputs
     .map(({ name, type, validExample }) => {
-      if (validExample && typeof validExample === 'string') return `"${name}": "${validExample}"`
-      if (validExample && typeof validExample !== 'string') return `"${name}": ${validExample}`
+      if (validExample !== undefined && typeof validExample === 'string') return `"${name}": "${validExample}"`
+      if (validExample !== undefined && typeof validExample !== 'string') return `"${name}": ${validExample}`
       if (type === 'String') return `"${name}": "${faker.random.word()}"`
       if (type === 'Float') return `"${name}": ${faker.datatype.number()}`
       if (type === 'Boolean') return `"${name}": ${faker.datatype.boolean()}`
