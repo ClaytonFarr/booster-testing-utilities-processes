@@ -37,6 +37,7 @@
     "---": "",
     "test:live": "boost deploy -e test; TESTED_PROVIDER=AWS AWS_SDK_LOAD_CONFIG=true BOOSTER_ENV=test nyc --extension .ts vitest; boost nuke -e test --force",
     "----": "",
+    "test:processes": "TESTED_PROVIDER=LOCAL BOOSTER_ENV=test nyc --extension .ts vitest --dir test/_processes",
     "test:process-tools": "TESTED_PROVIDER=LOCAL nyc --extension .ts vitest --dir test/helpers/process-test-helper/tests"
   },
   "dependencies": {
