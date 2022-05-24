@@ -108,7 +108,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       inputTypes = inputTypes.map((type) => type.trim())
       triggerInputs.push({
         name: input[1].replace(/\?/g, ''),
-        type: inputTypes,
+        types: inputTypes,
         required: input[1].includes('?') ? false : true,
       })
     })
@@ -145,14 +145,14 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
         const matchingScenarioInputs = scenarioInputs.filter((input) => input.name === triggerInput.name)
         for (const scenarioInput of matchingScenarioInputs) {
           for (const inputType of scenarioInput.types) {
-            if (!triggerInput.type.includes(inputType)) {
+            if (!triggerInput.types.includes(inputType)) {
               incorrectTypeInputs.forEach((input) => {
-                if (input.name === scenarioInput.name) input.type.push(inputType)
+                if (input.name === scenarioInput.name) input.types.push(inputType)
               })
               if (!incorrectTypeInputs.some((input) => input.name === scenarioInput.name))
                 incorrectTypeInputs.push({
                   name: scenarioInput.name,
-                  type: [inputType],
+                  types: [inputType],
                 })
             }
           }
@@ -175,13 +175,13 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       // alert if any inputs are missing
       if (missingInputs && missingInputs.length > 0) {
         for (const missingInput of missingInputs) {
-          issues.push(msg(is.triggerInputMissing, [missingInput.name, missingInput.type.join(', ')]))
+          issues.push(msg(is.triggerInputMissing, [missingInput.name, missingInput.types.join(', ')]))
         }
       }
       // alert if any inputs are mismatched
       if (incorrectTypeInputs && incorrectTypeInputs.length > 0) {
         for (const incorrectTypeInput of incorrectTypeInputs) {
-          issues.push(msg(is.triggerInputMissingTypes, [incorrectTypeInput.name, incorrectTypeInput.type.join(', ')]))
+          issues.push(msg(is.triggerInputMissingTypes, [incorrectTypeInput.name, incorrectTypeInput.types.join(', ')]))
         }
       }
       // alert if any inputs required status is mismatched
@@ -270,7 +270,7 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
           inputTypes = inputTypes.map((type) => type.trim())
           commandInputs.push({
             name: input[1].replace(/\?/g, ''),
-            type: inputTypes,
+            types: inputTypes,
             required: input[1].includes('?') ? false : true,
           })
         })
@@ -298,14 +298,14 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
             const matchingPaInputs = paInputs.filter((input) => input.name === commandInput.name)
             for (const paInput of matchingPaInputs) {
               for (const inputType of paInput.types) {
-                if (!commandInput.type.includes(inputType)) {
+                if (!commandInput.types.includes(inputType)) {
                   incorrectTypeInputs.forEach((input) => {
-                    if (input.name === paInput.name) input.type.push(inputType)
+                    if (input.name === paInput.name) input.types.push(inputType)
                   })
                   if (!incorrectTypeInputs.some((input) => input.name === paInput.name))
                     incorrectTypeInputs.push({
                       name: paInput.name,
-                      type: [inputType],
+                      types: [inputType],
                     })
                 }
               }
@@ -314,21 +314,25 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
           // alert if any inputs are missing
           if (missingInputs && missingInputs.length > 0) {
             for (const missingInput of missingInputs) {
-              issues.push(msg(is.paCommandInputMissing), [
-                paCommandNameFormatted,
-                missingInput.name,
-                missingInput.type.join(', '),
-              ])
+              issues.push(
+                msg(is.paCommandInputMissing, [
+                  paCommandNameFormatted, //
+                  missingInput.name,
+                  missingInput.types.join(', '),
+                ])
+              )
             }
           }
           // alert if any inputs are mismatched
           if (incorrectTypeInputs && incorrectTypeInputs.length > 0) {
             for (const incorrectTypeInput of incorrectTypeInputs) {
-              issues.push(msg(is.paCommandInputMissingTypes), [
-                paCommandNameFormatted,
-                incorrectTypeInput.name,
-                incorrectTypeInput.type.join(', '),
-              ])
+              issues.push(
+                msg(is.paCommandInputMissingTypes, [
+                  paCommandNameFormatted,
+                  incorrectTypeInput.name,
+                  incorrectTypeInput.types.join(', '),
+                ])
+              )
             }
           }
         }
@@ -553,10 +557,12 @@ export const confirmFiles = (assertions: Assertions, filePaths: LocalBoosterFile
       if (readModelProjectedEntityNames) {
         readModelProjectedEntityNames.forEach((projectedEntityName) => {
           if (!scenarioEntityNames.includes(projectedEntityName)) {
-            issues.push(msg(is.readModelNoMatchingEntityProjected), [
-              readModelNameFormatted,
-              scenarioEntities.join(', '),
-            ])
+            issues.push(
+              msg(is.readModelNoMatchingEntityProjected, [
+                readModelNameFormatted, //
+                scenarioEntities.join(', '),
+              ])
+            )
           }
         })
       }
