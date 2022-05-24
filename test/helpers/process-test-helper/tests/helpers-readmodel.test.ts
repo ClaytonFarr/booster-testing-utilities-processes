@@ -9,9 +9,9 @@ describe('Process - Read Model Helpers', async () => {
     //
     const testUUID = UUID.generate()
     const filterStringInput = { one: 'clayton', two: 'string', three: true, four: 4, five: testUUID, six: { sixOne: 1 }, seven: [ 'booster' ], eight: [1, 2, 3] }
-    const testFilterString = rm.createQueryFilterString(filterStringInput)
+    const testFilterString = rm.createQueryFilterString(filterStringInput, testUUID)
     const expectedFilterString = `{
-      one: { contains: "clayton" },
+      one: { eq: "clayton" },
       two: { isDefined: true },
       three: { eq: true },
       four: { eq: 4 },
@@ -23,6 +23,7 @@ describe('Process - Read Model Helpers', async () => {
         { eight: { includes: 2 } },
         { eight: { includes: 3 } },
       ],
+      id: { eq: "${testUUID}" },
     }`
     const testResult = testFilterString.replace(/ /g, '')
     const expectedResult = expectedFilterString.replace(/ |\n/g, '')

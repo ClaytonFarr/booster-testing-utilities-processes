@@ -88,6 +88,7 @@ const stateUpdateBothValuesBlocksMissing: Process = {
       expectedStateUpdates: [
         {
           entityName: '',
+          itemId: '',
         }
       ],
     }
@@ -108,6 +109,7 @@ const visibleUpdateBothValuesBlocksMissing: Process = {
       expectedVisibleUpdates: [
         {
           readModelName: '',
+          itemId: '',
           authorized: [],
         }
       ],
@@ -128,6 +130,7 @@ const stateUpdateValuesEmpty: Process = {
       expectedStateUpdates: [
         {
           entityName: '',
+          itemId: '',
           values: {},
           notValues: {},
         }
@@ -150,6 +153,7 @@ const visibleUpdateValuesEmpty: Process = {
       expectedVisibleUpdates: [
         {
           readModelName: '',
+          itemId: '',
           values: {},
           notValues: {},
           authorized: [],
@@ -172,6 +176,7 @@ const stateUpdateValuesFieldsBlank: Process = {
       expectedStateUpdates: [
         {
           entityName: '',
+          itemId: '',
           values: {
             thing: '',
           },
@@ -198,6 +203,7 @@ const visibleUpdateValuesFieldsBlank: Process = {
       expectedVisibleUpdates: [
         {
           readModelName: '',
+          itemId: '',
           values: {
             thing: '',            
           },
@@ -241,7 +247,7 @@ describe('Process - Validate Testing Inputs', async () => {
   describe('Checks scenario inputs', async () => {
     //
     const scenario = scenarioValuesEmpty.scenarios[0]
-    it('- if scenario inputs are empty', async () => expect(vp.scenarioInputsEmpty(scenario)).toBe(true))
+    it('- if scenario inputs are empty', async () => expect(vp.scenarioInputsEmpty(scenarioValuesEmpty, scenario)).toBe(true))
     for (const [value] of Object.entries(scenario.inputs))
       it('- if scenario input fields have blank values', async () => expect(vp.scenarioInputValueBlank(value)).toBe(true))
   })
@@ -254,6 +260,7 @@ describe('Process - Validate Testing Inputs', async () => {
     const stateUpdateValsFieldsBlank = stateUpdateValuesFieldsBlank.scenarios[0].expectedStateUpdates[0]
     it('- if state updates is empty', async () => expect(vp.scenarioStateUpdatesEmpty(scenario)).toBe(true))
     it('- if state update entity name is blank', async () => expect(vp.scenarioStateUpdateEntityNameBlank(stateUpdateValsEmpty)).toBe(true))
+    it('- if state update item id is blank', async () => expect(vp.scenarioStateUpdateItemIdBlank(stateUpdateValsEmpty)).toBe(true))
     it('- if state update has values or notValues blocks', async () => expect(vp.scenarioStateUpdateValuesBlocksMissing(stateUpdateBlocksMissing)).toBe(true))
     it('- if state update has values is empty, when present', async () => expect(vp.scenarioStateUpdateValuesEmpty(stateUpdateValsEmpty)).toBe(true))
     it('- if state update has notValues is empty, when present', async () => expect(vp.scenarioStateUpdateNotValuesEmpty(stateUpdateValsEmpty)).toBe(true))
@@ -273,6 +280,8 @@ describe('Process - Validate Testing Inputs', async () => {
     const visibleUpdateValsFieldsBlank = visibleUpdateValuesFieldsBlank.scenarios[0].expectedVisibleUpdates[0]
     it('- if visible updates is empty, when present', async () => expect(vp.scenarioVisibleUpdatesEmpty(scenario)).toBe(true))
     it('- if visible update read model name is blank', async () => expect(vp.scenarioVisibleUpdateReadModelNameBlank(visibleUpdateValsEmpty)).toBe(true))
+    it('- if state update item id is blank', async () => expect(vp.scenarioVisibleUpdateItemIdBlank(visibleUpdateValsEmpty)).toBe(true))
+    it('- if state update id key is present and blank', async () => expect(vp.scenarioVisibleUpdateIdKeyBlank(visibleUpdateValsEmpty)).toBe(true))
     it('- if visible update has values or notValues blocks', async () => expect(vp.scenarioVisibleUpdateValuesBlocksMissing(visibleUpdateBlocksMissing)).toBe(true))
     it('- if visible update has values is empty, when present', async () => expect(vp.scenarioVisibleUpdateValuesEmpty(visibleUpdateValsEmpty)).toBe(true))
     it('- if visible update has notValues is empty, when present', async () => expect(vp.scenarioVisibleUpdateNotValuesEmpty(visibleUpdateValsEmpty)).toBe(true))

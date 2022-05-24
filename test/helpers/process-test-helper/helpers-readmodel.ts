@@ -12,7 +12,9 @@ import gql from 'graphql-tag'
 // -----------------------------------------------------------------------------------
 
 export const createQueryFilterString = (
-  fields: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>
+  fields: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>,
+  itemId?: string | number | UUID,
+  itemIdKey?: string
 ): string => {
   const fieldNames = []
   const fieldItems = []
@@ -32,7 +34,7 @@ export const createQueryFilterString = (
         // currently limited to filters from strings, numbers, and booleans
         // JSON or stringified JSON value checks will be ignored
         if (valueType === 'string' && !util.isStringJson(field.value as string)) {
-          filterString += `${field.fieldName}: { contains: "${field.value}" }, `
+          filterString += `${field.fieldName}: { eq: "${field.value}" }, `
         }
         if (valueType === 'number' || valueType === 'boolean') {
           filterString += `${field.fieldName}: { eq: ${field.value} }, `
@@ -44,7 +46,7 @@ export const createQueryFilterString = (
           for (const [key, value] of Object.entries(field.value)) {
             const valueType = util.inferValueType(value)
             if (valueType === 'string') {
-              filterString += `${field.fieldName}: { ${key}: { contains: "${value}" } }, `
+              filterString += `${field.fieldName}: { ${key}: { eq: "${value}" } }, `
             }
             if (valueType === 'number' || valueType === 'boolean') {
               filterString += `${field.fieldName}: { ${key}: { eq: ${value} } }, `
@@ -94,6 +96,12 @@ export const createQueryFilterString = (
       }
     }
   )
+  if (itemId) {
+    const itemIdType = util.inferValueType(itemId)
+    const idKey = itemIdKey ?? 'id'
+    if (itemIdType === 'string' || itemIdType === 'UUID') filterString += `${idKey}: { eq: "${itemId}" }, `
+    if (itemIdType === 'number') filterString += `${idKey}: { eq: ${itemId} }, `
+  }
   filterString += ' }'
   return filterString
 }
@@ -127,6 +135,8 @@ export const queryReadModel = async (
   graphQLclient: ApolloClient<NormalizedCacheObject>,
   readModelName: string,
   fields: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]>,
+  itemId?: string | number | UUID,
+  itemIdKey?: string,
   limitResultsTo?: number,
   sortBy?: Record<string, unknown>
 ): Promise<Record<string, unknown>[]> => {
@@ -140,7 +150,7 @@ export const queryReadModel = async (
   }
   const fieldsToReturn = [...fieldNames].join(',')
   // ...create filter string
-  const filterString = createQueryFilterString(fields)
+  const filterString = createQueryFilterString(fields, itemId, itemIdKey)
   // ...build query
   const filterBy = util.looseJSONparse(filterString)
   const limitTo = limitResultsTo

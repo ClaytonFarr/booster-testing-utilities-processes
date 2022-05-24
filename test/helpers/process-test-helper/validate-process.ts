@@ -58,8 +58,8 @@ export const validateProcessInputs = (process: type.Process): boolean | string[]
         }
       }
 
-      // ✅ validate scenario inputs are present
-      if (scenarioInputsEmpty(scenario)) scenarioIssues.push(msg(is.scenarioInputsEmpty))
+      // ✅ if trigger is Actor Command, validate scenario inputs are present
+      if (scenarioInputsEmpty(process, scenario)) scenarioIssues.push(msg(is.scenarioInputsEmpty))
 
       // ✅ validate scenario[i].inputs[i].name is not blank
       for (const [key, value] of Object.entries(scenario.inputs))
@@ -70,36 +70,42 @@ export const validateProcessInputs = (process: type.Process): boolean | string[]
 
       if (scenario.expectedStateUpdates?.length > 0) {
         for (const expectedStateUpdate of scenario.expectedStateUpdates) {
-          const entityNameFormatted = util.toPascalCase(expectedStateUpdate.entityName)
-
           // ✅ validate scenario[i].expectedStateUpdates[i].entityName is not blank
           if (scenarioStateUpdateEntityNameBlank(expectedStateUpdate))
             scenarioIssues.push(msg(is.scenarioSuEntityNameBlank))
 
-          // ✅ validate scenario[i].expectedStateUpdates[i] has values or notValues data present
-          if (scenarioStateUpdateValuesBlocksMissing(expectedStateUpdate))
-            scenarioIssues.push(msg(is.scenarioSuEntityMissingValueBlocks), [entityNameFormatted])
+          if (!scenarioStateUpdateEntityNameBlank(expectedStateUpdate)) {
+            const entityNameFormatted = util.toPascalCase(expectedStateUpdate.entityName)
 
-          // ✅ validate scenario[i].expectedStateUpdates[i].values is not empty (if present)
-          if (scenarioStateUpdateValuesEmpty(expectedStateUpdate))
-            scenarioIssues.push(msg(is.scenarioSuEntityValuesEmpty), [entityNameFormatted])
+            // ✅ validate scenario[i].expectedStateUpdates[i].itemId is not blank
+            if (scenarioStateUpdateItemIdBlank(expectedStateUpdate))
+              scenarioIssues.push(msg(is.scenarioSuItemIdBlank, [entityNameFormatted]))
 
-          // ✅ validate scenario[i].expectedStateUpdates[i].notValues is not empty (if present)
-          if (scenarioStateUpdateNotValuesEmpty(expectedStateUpdate))
-            scenarioIssues.push(msg(is.scenarioSuEntityNotValuesEmpty), [entityNameFormatted])
+            // ✅ validate scenario[i].expectedStateUpdates[i] has values or notValues data present
+            if (scenarioStateUpdateValuesBlocksMissing(expectedStateUpdate))
+              scenarioIssues.push(msg(is.scenarioSuEntityMissingValueBlocks, [entityNameFormatted]))
 
-          // ✅ validate scenario[i].expectedStateUpdates[i].values[i].field value is not blank
-          if (expectedStateUpdate.values && expectedStateUpdate.values.length > 0) {
-            for (const [key, value] of Object.entries(expectedStateUpdate.values))
-              if (scenarioStateUpdateValueBlank(value))
-                scenarioIssues.push(msg(is.scenarioSuEntityValuesFieldBlank, [key]))
-          }
+            // ✅ validate scenario[i].expectedStateUpdates[i].values is not empty (if present)
+            if (scenarioStateUpdateValuesEmpty(expectedStateUpdate))
+              scenarioIssues.push(msg(is.scenarioSuEntityValuesEmpty, [entityNameFormatted]))
 
-          // ✅ validate scenario[i].expectedStateUpdates[i].notValues[i].field value is not blank
-          if (expectedStateUpdate.notValues && expectedStateUpdate.notValues.length > 0) {
-            for (const [key, value] of Object.entries(expectedStateUpdate.notValues))
-              if (scenarioStateUpdateNotValueBlank(value))
-                scenarioIssues.push(msg(is.scenarioSuEntityNotValuesFieldBlank, [key]))
+            // ✅ validate scenario[i].expectedStateUpdates[i].notValues is not empty (if present)
+            if (scenarioStateUpdateNotValuesEmpty(expectedStateUpdate))
+              scenarioIssues.push(msg(is.scenarioSuEntityNotValuesEmpty, [entityNameFormatted]))
+
+            // ✅ validate scenario[i].expectedStateUpdates[i].values[i].field value is not blank
+            if (expectedStateUpdate.values && expectedStateUpdate.values.length > 0) {
+              for (const [key, value] of Object.entries(expectedStateUpdate.values))
+                if (scenarioStateUpdateValueBlank(value))
+                  scenarioIssues.push(msg(is.scenarioSuEntityValuesFieldBlank, [key]))
+            }
+
+            // ✅ validate scenario[i].expectedStateUpdates[i].notValues[i].field value is not blank
+            if (expectedStateUpdate.notValues && expectedStateUpdate.notValues.length > 0) {
+              for (const [key, value] of Object.entries(expectedStateUpdate.notValues))
+                if (scenarioStateUpdateNotValueBlank(value))
+                  scenarioIssues.push(msg(is.scenarioSuEntityNotValuesFieldBlank, [key]))
+            }
           }
         }
       }
@@ -112,9 +118,17 @@ export const validateProcessInputs = (process: type.Process): boolean | string[]
           if (scenarioVisibleUpdateReadModelNameBlank(expectedVisibleUpdate))
             scenarioIssues.push(msg(is.scenarioVuRmNameBlank))
 
+          // ✅ validate scenario[i].expectedVisibleUpdates[i].itemId is not blank
+          if (scenarioVisibleUpdateItemIdBlank(expectedVisibleUpdate))
+            scenarioIssues.push(msg(is.scenarioVuRmItemIdBlank, [rmNameFormatted]))
+
+          // ✅ validate scenario[i].expectedVisibleUpdates[i].idKey is not blank
+          if (expectedVisibleUpdate.idKey && scenarioVisibleUpdateIdKeyBlank(expectedVisibleUpdate))
+            scenarioIssues.push(msg(is.scenarioVuRmIdKeyBlank, [rmNameFormatted]))
+
           // ✅ validate scenario[i].expectedVisibleUpdates[i] has values or notValues data present
           if (scenarioVisibleUpdateValuesBlocksMissing(expectedVisibleUpdate))
-            scenarioIssues.push(msg(is.scenarioVuRmMissingValueBlocks), [rmNameFormatted])
+            scenarioIssues.push(msg(is.scenarioVuRmMissingValueBlocks, [rmNameFormatted]))
 
           // ✅ validate scenario[i].expectedVisibleUpdates[i].values is not empty, if present
           if (scenarioVisibleUpdateValuesEmpty(expectedVisibleUpdate))
@@ -180,12 +194,11 @@ export const valueIsBlank = (value: unknown): boolean => {
     value === ' ' ||
     (typeof value === 'object' && Object.keys(value).length === 0) ||
     (Array.isArray(value) && value.length === 0)
-
   )
 }
 // Top-level blank values (that can still pass type validation)
 export const processNameBlank = (process: type.Process): boolean => valueIsBlank(process.name)
-export const triggerCommandNameBlank = (process: type.Process): boolean => valueIsBlank(process.trigger.commandName)
+export const triggerCommandNameBlank = (process: type.Process): boolean => (process.trigger.type === 'ActorCommand' ||process.trigger.type === 'ScheduledCommand') && valueIsBlank(process.trigger.commandName)
 export const triggerAuthEmpty = (process: type.Process): boolean =>
   process.trigger.type === 'ActorCommand' && valueIsBlank(process.trigger.authorized)
 export const scenariosEmpty = (process: type.Process): boolean => valueIsBlank(process.scenarios)
@@ -203,8 +216,8 @@ export const scenarioPaCommandNameBlank = (action: type.PrecedingAction): boolea
 export const scenarioPaInputsEmpty = (action: type.PrecedingAction): boolean => valueIsBlank(action.inputs)
 export const scenarioPaAuthEmpty = (action: type.PrecedingAction): boolean => valueIsBlank(action.authorized)
 
-// Scenario: Inputs
-export const scenarioInputsEmpty = (scenario: type.Scenario): boolean => valueIsBlank(scenario.inputs)
+// if trigger is Actor Command, Scenario: Inputs
+export const scenarioInputsEmpty = (process: type.Process, scenario: type.Scenario): boolean => process.trigger.type === 'ActorCommand' && valueIsBlank(scenario.inputs)
 export const scenarioInputValueBlank = (value: unknown): boolean => valueIsBlank(value)
 
 // Scenario: State Updates
@@ -212,6 +225,8 @@ export const scenarioStateUpdatesEmpty = (scenario: type.Scenario): boolean =>
   !scenario.shouldBeRejected && valueIsBlank(scenario.expectedStateUpdates)
 export const scenarioStateUpdateEntityNameBlank = (stateUpdate: type.StateUpdate): boolean =>
   valueIsBlank(stateUpdate.entityName)
+export const scenarioStateUpdateItemIdBlank = (stateUpdate: type.StateUpdate): boolean =>
+  valueIsBlank(stateUpdate.itemId)
 export const scenarioStateUpdateValuesBlocksMissing = (stateUpdate: type.StateUpdate): boolean =>
   !stateUpdate.values && !stateUpdate.notValues
 export const scenarioStateUpdateValuesEmpty = (stateUpdate: type.StateUpdate): boolean =>
@@ -226,6 +241,10 @@ export const scenarioVisibleUpdatesEmpty = (scenario: type.Scenario): boolean =>
   valueIsBlank(scenario.expectedVisibleUpdates)
 export const scenarioVisibleUpdateReadModelNameBlank = (visibleUpdate: type.VisibleUpdate): boolean =>
   valueIsBlank(visibleUpdate.readModelName)
+export const scenarioVisibleUpdateItemIdBlank = (visibleUpdate: type.VisibleUpdate): boolean =>
+  valueIsBlank(visibleUpdate.itemId)
+export const scenarioVisibleUpdateIdKeyBlank = (visibleUpdate: type.VisibleUpdate): boolean =>
+  valueIsBlank(visibleUpdate.idKey)
 export const scenarioVisibleUpdateValuesBlocksMissing = (visibleUpdate: type.VisibleUpdate): boolean =>
   !visibleUpdate.values && !visibleUpdate.notValues
 export const scenarioVisibleUpdateValuesEmpty = (visibleUpdate: type.VisibleUpdate): boolean =>

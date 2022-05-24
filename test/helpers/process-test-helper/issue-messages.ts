@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 
 export const assertionIssues = {
-  assertionIssuesHeader: 'Assertions Errors',
+  assertionIssuesHeader: 'Process Errors',
 
   processNameBlank: 'Process name is blank',
 
@@ -21,6 +21,7 @@ export const assertionIssues = {
 
   scenarioSuEmpty: 'Scenario has no expected state update(s)',
   scenarioSuEntityNameBlank: 'State update has a blank entity name',
+  scenarioSuItemIdBlank: "State update for '{{entityName}}' `itemId` value is blank",
   scenarioSuEntityMissingValueBlocks: "State update for '{{entityName}}' needs `values` or `notValues`",
   scenarioSuEntityValuesEmpty: "State update for '{{entityName}}' `values` expectations is empty",
   scenarioSuEntityNotValuesEmpty: "State update for '{{entityName}}' `notValues` expectations is empty",
@@ -28,6 +29,8 @@ export const assertionIssues = {
   scenarioSuEntityNotValuesFieldBlank: "State update for `notValues` field '{{name}}' has a blank value",
 
   scenarioVuRmNameBlank: 'Visible update has a blank read model name',
+  scenarioVuRmItemIdBlank: "Visible update for '{{readModelName}}' `itemId` value is blank",
+  scenarioVuRmIdKeyBlank: "Visible update for '{{readModelName}}' includes `idKey` without a value",
   scenarioVuRmMissingValueBlocks: "Visible update for '{{readModelName}}' needs `values` or `notValues`",
   scenarioVuRmValuesEmpty: "Visible update for '{{readModelName}}' `values` expectations is empty",
   scenarioVuRmNotValuesEmpty: "Visible update for '{{readModelName}}' `notValues` expectations is empty",
@@ -93,13 +96,14 @@ export const confirmationIssues = {
   stateUpdateErrorHeading: "👽 Entity '{{entityName}}' was not updated as expected\n",
   stateUpdateNotFoundWithinTimeLimit: "👽 No state update found for '{{entityName}}' within {{numberOfSec}} seconds\nSearched for key: '{{primaryKey}}'",
   stateUpdateNotFound: "👽 No matching state update found for entity '{{entityName}}'\nSearched for key: '{{primaryKey}}'",
-  stateUpdateFieldValueIncorrect: "   ↪ Field '{{name}}' value is '{{value}}' (expected '{{expectedValue}}')",
-  stateUpdateFieldValueMissing: "   ↪ Field '{{name}}' is missing (with any '{{fieldType}}' value)",
-  stateUpdateFieldValueObjectMissing: "   ↪ Field '{{name}}' is missing",
+  stateUpdateIdMissing: 'Item id missing - add `itemId` value with id for item to inspect',
+  stateUpdateFieldValueIncorrect: "Field '{{name}}' value is '{{value}}' (expected '{{expectedValue}}')",
+  stateUpdateFieldValueMissing: "Field '{{name}}' is missing (with any '{{fieldType}}' value)",
+  stateUpdateFieldValueObjectMissing: "Field '{{name}}' is missing",
   stateUpdateFieldValueObjectIncorrect: "Field '{{name}}' value is:\n{{value}}\nExpected:\n{{expectedValue}}",
-  stateUpdateFieldValueNotArray: "   ↪ Field '{{name}}' expects an array and the matching updated field type is '{{fieldType}}'",
-  stateUpdateNotFieldValuePresent: "   ↪ Field '{{name}}' with '{{stateValue}}' value found (should not be present)",
-  stateUpdateNotFieldPresent: "   ↪ Field '{{name}}' is present (should not be present with any value)",
+  stateUpdateFieldValueNotArray: "Field '{{name}}' expects an array and the matching updated field type is '{{fieldType}}'",
+  stateUpdateNotFieldValuePresent: "Field '{{name}}' with '{{stateValue}}' value found (should not be present)",
+  stateUpdateNotFieldPresent: "Field '{{name}}' is present (should not be present with any value)",
 
   visibleUpdateErrorHeading: "🔭 Read model '{{readModelName}}' was not updated as expected\n",
   visibleUpdateItemNotFound: 'Could not find item\n{{expectedValues}}\nUsed query filter:\n{{queryFilterString}}',

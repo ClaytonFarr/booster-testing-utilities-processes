@@ -84,6 +84,12 @@ const fieldBValues = createDataValues(fieldBTypes)
 const fieldCTypes = ['string', 'number', 'boolean', 'uuid']
 const fieldCValues = createDataValues(fieldCTypes)
 
+const itemId01 = faker.random.alphaNumeric(10)
+const itemId02 = faker.random.alphaNumeric(10)
+const itemId03 = faker.random.alphaNumeric(10)
+const processIds = [itemId01, itemId02, itemId03]
+
+
 const assertionsInput: type.Process = {
   name: 'Process Name',
 
@@ -114,6 +120,7 @@ const assertionsInput: type.Process = {
       expectedStateUpdates: [
         {
           entityName: processEntities[0],
+          itemId: processIds[0],
           values: {
             fieldA: fieldAValues[0],
             fieldB: fieldBValues[0],
@@ -122,6 +129,7 @@ const assertionsInput: type.Process = {
         },
         {
           entityName: processEntities[1],
+          itemId: processIds[1],
           notValues: {
             fieldA: fieldAValues[1],
             fieldB: fieldBValues[1],
@@ -133,6 +141,7 @@ const assertionsInput: type.Process = {
       expectedVisibleUpdates: [
         {
           readModelName: processReadModels[0],
+          itemId: processIds[0],
           values: {
             fieldA: fieldAValues[0],
             fieldB: fieldBValues[0],
@@ -166,6 +175,7 @@ const assertionsInput: type.Process = {
       expectedStateUpdates: [
         {
           entityName: processEntities[1],
+          itemId: processIds[1],
           values: {
             fieldA: fieldAValues[1],
             fieldB: fieldBValues[1],
@@ -174,6 +184,7 @@ const assertionsInput: type.Process = {
         },
         {
           entityName: processEntities[2],
+          itemId: processIds[2],
           notValues: {
             fieldA: fieldAValues[2],
             fieldB: fieldBValues[2],
@@ -185,6 +196,7 @@ const assertionsInput: type.Process = {
       expectedVisibleUpdates: [
         {
           readModelName: processReadModels[1],
+          itemId: processIds[1],
           values: {
             fieldA: fieldAValues[1],
             fieldB: fieldBValues[1],
