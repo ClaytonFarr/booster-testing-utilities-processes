@@ -62,6 +62,6 @@ export const testProcess = (process: Process, filePaths?: LocalBoosterFilePaths)
       it('Meets all scenario expectations', async () => expect(expectationsPass).toBe(true))
     }
 
-    log.processFooter()
+    if (!expectationsPass) log.processFooter()
   })
 }
