@@ -34,13 +34,13 @@ export interface VisibleUpdate {
 }
 export interface PrecedingAction {
   commandName: string
-  inputs: Record<string, string | number | boolean | UUID> // inputs are only present on Actor Commands
+  inputs: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]> // inputs are only present on Actor Commands
   authorized: 'all' | string[]
 }
 export interface Scenario {
   name: string
   precedingActions?: PrecedingAction[] // optional commands to call before scenario inputs to achieve correct state
-  inputs?: Record<string, string | number | boolean | UUID> // inputs are only present on Actor Commands
+  inputs?: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]> // inputs are only present on Actor Commands
   eventValues?: Record<string, string | number | boolean | UUID | Record<string, unknown> | unknown[]> // event values are only present on Trigger Events
   shouldBeRejected?: boolean // e.g. if scenario is invalid, confirm it should be rejected/receive error from application
   expectedStateUpdates: StateUpdate[]
