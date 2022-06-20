@@ -1,5 +1,5 @@
 {
-  "name": "booster-app-process-testing",
+  "name": "booster-testing-utilities-processes",
   "description": "Patterns and helpers to build and test Booster.cloud applications via defined processes.",
   "version": "0.1.0",
   "author": "@ClaytonFarr",
