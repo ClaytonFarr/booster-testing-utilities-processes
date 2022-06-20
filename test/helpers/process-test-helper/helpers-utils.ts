@@ -1,4 +1,5 @@
 import type { UUID } from '@boostercloud/framework-types'
+import { faker } from '@faker-js/faker'
 
 // Miscellaneous Helpers
 // ====================================================================================
@@ -143,8 +144,8 @@ export const inferValueType = (
   return type
 }
 
-export const inferGraphQLValueType = (val: string | number | boolean | UUID): string => {
-  let type: string
+export const inferGraphQLValueType = (val: string | number | boolean | UUID): string | undefined => {
+  let type: string | undefined
   // if value is a string check for type keyword and convert to GraphQL equivalent
   if (typeof val === 'string' && uuidRegex.test(val)) return 'ID'
   if (typeof val === 'string')
@@ -207,6 +208,19 @@ export const convertKeyValueToNameAndType = (key: string, value: unknown): { nam
   return {
     name: toCamelCase(key),
     types: [inferValueType(value as string)],
+  }
+}
+
+// Data
+// -----------------------------------------------------------------------------------
+export const fakeData = (valueType: string): string | number | boolean | undefined => {
+  switch (valueType) {
+    case 'string':
+      return faker.lorem.words()
+    case 'number':
+      return faker.datatype.number()
+    case 'boolean':
+      return faker.datatype.boolean()
   }
 }
 

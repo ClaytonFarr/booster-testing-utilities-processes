@@ -10,7 +10,42 @@ export interface ActorCommand {
 export interface ScheduledCommand {
   type: 'ScheduledCommand'
   commandName: string
-  schedule: string // validation currently constrained to valid cron expressions (https://crontab.guru/); does not yet support keywords from https://docs.booster.cloud/chapters/03_booster-architecture?id=scheduling-a-command
+  schedule: BoosterCronExpression
+}
+export interface BoosterCronExpression {
+  minute?: '*' | string // e.g. 0-59, '0', '0/30', '*'
+  hour?: '*' | string // e.g. 0-23, '0', '12', '*'
+  day?: '*' | '?' | string // e.g. 1-31, '0'
+  weekDay?: '*' | '?' | 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN' | '0' | '1' | '2' | '3' | '4' | '5' | '6'
+  month?:
+    | '*'
+    | 'JAN'
+    | 'FEB'
+    | 'MAR'
+    | 'APR'
+    | 'MAY'
+    | 'JUN'
+    | 'JUL'
+    | 'AUG'
+    | 'SEP'
+    | 'OCT'
+    | 'NOV'
+    | 'DEC'
+    | '1'
+    | '2'
+    | '3'
+    | '4'
+    | '5'
+    | '6'
+    | '7'
+    | '8'
+    | '9'
+    | '10'
+    | '11'
+    | '12'
+    | string // '6', 'JUL'
+  year?: '*' | string // e.g. '2022', '*'
+  // Note: AWS requires either day or weekDay to be '?' to avoid Booster defaulting value to '*' and causing errors
 }
 export interface TriggerEvent {
   // events that trigger event handlers
