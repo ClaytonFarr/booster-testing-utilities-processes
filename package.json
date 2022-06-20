@@ -1,9 +1,9 @@
 {
-  "name": "booster-app-testing",
-  "description": "Patterns and helpers for testing a Booster.cloud application",
+  "name": "booster-app-process-testing",
+  "description": "Patterns and helpers to build and test Booster.cloud applications via defined processes.",
   "version": "0.1.0",
   "author": "@ClaytonFarr",
-  "homepage": "https://github.com/ClaytonFarr/booster-app-testing",
+  "homepage": "https://github.com/ClaytonFarr/booster-app-process-testing",
   "license": "MIT",
   "main": "dist/index.js",
   "repository": "",
